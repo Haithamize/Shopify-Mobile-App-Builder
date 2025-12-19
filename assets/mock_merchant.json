@@ -1,0 +1,20 @@
+{
+  "merchantId": "mock_001",
+  "shopDomain": "demo-store.myshopify.com",
+  "storefrontToken": "shpat_mock_token_12345",
+  "appName": "Urban Threads",
+  "theme": {
+    "primaryColor": "#FF5733",
+    "secondaryColor": "#F0F0F0",
+    "fontFamily": "Poppins",
+    "logoUrl": "https://via.placeholder.com/150"
+  },
+  "features": {
+    "useNativeCheckout": true,
+    "enableWishlist": true,
+    "enableSocialLogin": false
+  },
+  "integrationKeys": {
+    "firebase_android": "google-services-mock.json"
+  }
+}

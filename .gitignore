@@ -1,0 +1,145 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.fvm/
+*.swp
+
+# Android
+android/.gradle/
+android/.idea/
+android/app/build/
+android/build/
+android/captures/
+android/local.properties
+android/key.properties
+android/*.keystore
+android/*.jks
+android/app/google-services.json # Hydrated Firebase configs
+android/app/src/main/res/values/strings.xml # Hydrated app names
+
+# iOS
+ios/.generated/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Runner/GoogleService-Info.plist # Hydrated Firebase configs
+ios/Runner/Assets.xcassets/AppIcon.appiconset/* # Generated icons
+ios/Runner/Assets.xcassets/LaunchImage.imageset/* # Generated launch images
+
+# Generated files from hydration
+.hydration_state
+.hydration_verification.txt
+hydration_verification.txt
+.hydration_backups/
+.backup_*/
+.skeleton_backup/
+
+# Merchant vaults (if you don't want to commit merchant-specific configs)
+merchant_vault/*/
+!merchant_vault/skeleton/ # Keep skeleton config
+!merchant_vault/README.md
+
+# Temporary files from hydration
+assets/icon_temp.png
+flutter_launcher_icons.yaml
+flutter_launcher_icons-*.yaml
+
+# CI/CD artifacts
+builds/
+dist/
+artifacts/
+*.apk
+*.ipa
+*.aab
+*.dSYM.zip
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.production
+.env.staging
+.env.development
+
+# Coverage
+coverage/
+lcov.info
+
+# Test outputs
+/test-reports/
+/coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# IntelliJ
+*.iws
+out/
+
+# Flutter build outputs
+/**/build/
+/**/android/app/intermediates/
+/**/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# Android Studio
+**/android/**/GeneratedPluginRegistrant.java
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Hydration system specific
+hydrated_builds/
+merchant_builds/
+pipeline_logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+# App icons (generated)
+android/app/src/main/res/mipmap-*/ic_launcher*.png
+android/app/src/main/res/mipmap-*/ic_launcher_round*.png
+android/app/src/main/res/values-night/ # If you generate dark mode resources
