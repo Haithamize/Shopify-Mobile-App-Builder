@@ -49,6 +49,15 @@ _FeatureFlags _$FeatureFlagsFromJson(Map<String, dynamic> json) =>
       useNativeCheckout: json['useNativeCheckout'] as bool? ?? false,
       enableWishlist: json['enableWishlist'] as bool? ?? false,
       enableSocialLogin: json['enableSocialLogin'] as bool? ?? false,
+      enablePushNotifications: json['enablePushNotifications'] as bool? ?? true,
+      supportedLanguages:
+          (json['supportedLanguages'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [EN, AR],
+      defaultLanguage: json['defaultLanguage'] as String? ?? EN,
+      enableLanguageSwitching:
+          json['enableLanguageSwitching'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$FeatureFlagsToJson(_FeatureFlags instance) =>
@@ -56,4 +65,8 @@ Map<String, dynamic> _$FeatureFlagsToJson(_FeatureFlags instance) =>
       'useNativeCheckout': instance.useNativeCheckout,
       'enableWishlist': instance.enableWishlist,
       'enableSocialLogin': instance.enableSocialLogin,
+      'enablePushNotifications': instance.enablePushNotifications,
+      'supportedLanguages': instance.supportedLanguages,
+      'defaultLanguage': instance.defaultLanguage,
+      'enableLanguageSwitching': instance.enableLanguageSwitching,
     };

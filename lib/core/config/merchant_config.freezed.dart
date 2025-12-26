@@ -610,7 +610,7 @@ as String,
 /// @nodoc
 mixin _$FeatureFlags {
 
- bool get useNativeCheckout; bool get enableWishlist; bool get enableSocialLogin;
+ bool get useNativeCheckout; bool get enableWishlist; bool get enableSocialLogin; bool get enablePushNotifications; List<String> get supportedLanguages; String get defaultLanguage; bool get enableLanguageSwitching;
 /// Create a copy of FeatureFlags
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -623,16 +623,16 @@ $FeatureFlagsCopyWith<FeatureFlags> get copyWith => _$FeatureFlagsCopyWithImpl<F
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeatureFlags&&(identical(other.useNativeCheckout, useNativeCheckout) || other.useNativeCheckout == useNativeCheckout)&&(identical(other.enableWishlist, enableWishlist) || other.enableWishlist == enableWishlist)&&(identical(other.enableSocialLogin, enableSocialLogin) || other.enableSocialLogin == enableSocialLogin));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeatureFlags&&(identical(other.useNativeCheckout, useNativeCheckout) || other.useNativeCheckout == useNativeCheckout)&&(identical(other.enableWishlist, enableWishlist) || other.enableWishlist == enableWishlist)&&(identical(other.enableSocialLogin, enableSocialLogin) || other.enableSocialLogin == enableSocialLogin)&&(identical(other.enablePushNotifications, enablePushNotifications) || other.enablePushNotifications == enablePushNotifications)&&const DeepCollectionEquality().equals(other.supportedLanguages, supportedLanguages)&&(identical(other.defaultLanguage, defaultLanguage) || other.defaultLanguage == defaultLanguage)&&(identical(other.enableLanguageSwitching, enableLanguageSwitching) || other.enableLanguageSwitching == enableLanguageSwitching));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,useNativeCheckout,enableWishlist,enableSocialLogin);
+int get hashCode => Object.hash(runtimeType,useNativeCheckout,enableWishlist,enableSocialLogin,enablePushNotifications,const DeepCollectionEquality().hash(supportedLanguages),defaultLanguage,enableLanguageSwitching);
 
 @override
 String toString() {
-  return 'FeatureFlags(useNativeCheckout: $useNativeCheckout, enableWishlist: $enableWishlist, enableSocialLogin: $enableSocialLogin)';
+  return 'FeatureFlags(useNativeCheckout: $useNativeCheckout, enableWishlist: $enableWishlist, enableSocialLogin: $enableSocialLogin, enablePushNotifications: $enablePushNotifications, supportedLanguages: $supportedLanguages, defaultLanguage: $defaultLanguage, enableLanguageSwitching: $enableLanguageSwitching)';
 }
 
 
@@ -643,7 +643,7 @@ abstract mixin class $FeatureFlagsCopyWith<$Res>  {
   factory $FeatureFlagsCopyWith(FeatureFlags value, $Res Function(FeatureFlags) _then) = _$FeatureFlagsCopyWithImpl;
 @useResult
 $Res call({
- bool useNativeCheckout, bool enableWishlist, bool enableSocialLogin
+ bool useNativeCheckout, bool enableWishlist, bool enableSocialLogin, bool enablePushNotifications, List<String> supportedLanguages, String defaultLanguage, bool enableLanguageSwitching
 });
 
 
@@ -660,11 +660,15 @@ class _$FeatureFlagsCopyWithImpl<$Res>
 
 /// Create a copy of FeatureFlags
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? useNativeCheckout = null,Object? enableWishlist = null,Object? enableSocialLogin = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? useNativeCheckout = null,Object? enableWishlist = null,Object? enableSocialLogin = null,Object? enablePushNotifications = null,Object? supportedLanguages = null,Object? defaultLanguage = null,Object? enableLanguageSwitching = null,}) {
   return _then(_self.copyWith(
 useNativeCheckout: null == useNativeCheckout ? _self.useNativeCheckout : useNativeCheckout // ignore: cast_nullable_to_non_nullable
 as bool,enableWishlist: null == enableWishlist ? _self.enableWishlist : enableWishlist // ignore: cast_nullable_to_non_nullable
 as bool,enableSocialLogin: null == enableSocialLogin ? _self.enableSocialLogin : enableSocialLogin // ignore: cast_nullable_to_non_nullable
+as bool,enablePushNotifications: null == enablePushNotifications ? _self.enablePushNotifications : enablePushNotifications // ignore: cast_nullable_to_non_nullable
+as bool,supportedLanguages: null == supportedLanguages ? _self.supportedLanguages : supportedLanguages // ignore: cast_nullable_to_non_nullable
+as List<String>,defaultLanguage: null == defaultLanguage ? _self.defaultLanguage : defaultLanguage // ignore: cast_nullable_to_non_nullable
+as String,enableLanguageSwitching: null == enableLanguageSwitching ? _self.enableLanguageSwitching : enableLanguageSwitching // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -750,10 +754,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool useNativeCheckout,  bool enableWishlist,  bool enableSocialLogin)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool useNativeCheckout,  bool enableWishlist,  bool enableSocialLogin,  bool enablePushNotifications,  List<String> supportedLanguages,  String defaultLanguage,  bool enableLanguageSwitching)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _FeatureFlags() when $default != null:
-return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialLogin);case _:
+return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialLogin,_that.enablePushNotifications,_that.supportedLanguages,_that.defaultLanguage,_that.enableLanguageSwitching);case _:
   return orElse();
 
 }
@@ -771,10 +775,10 @@ return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialL
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool useNativeCheckout,  bool enableWishlist,  bool enableSocialLogin)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool useNativeCheckout,  bool enableWishlist,  bool enableSocialLogin,  bool enablePushNotifications,  List<String> supportedLanguages,  String defaultLanguage,  bool enableLanguageSwitching)  $default,) {final _that = this;
 switch (_that) {
 case _FeatureFlags():
-return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialLogin);case _:
+return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialLogin,_that.enablePushNotifications,_that.supportedLanguages,_that.defaultLanguage,_that.enableLanguageSwitching);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -791,10 +795,10 @@ return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialL
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool useNativeCheckout,  bool enableWishlist,  bool enableSocialLogin)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool useNativeCheckout,  bool enableWishlist,  bool enableSocialLogin,  bool enablePushNotifications,  List<String> supportedLanguages,  String defaultLanguage,  bool enableLanguageSwitching)?  $default,) {final _that = this;
 switch (_that) {
 case _FeatureFlags() when $default != null:
-return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialLogin);case _:
+return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialLogin,_that.enablePushNotifications,_that.supportedLanguages,_that.defaultLanguage,_that.enableLanguageSwitching);case _:
   return null;
 
 }
@@ -806,12 +810,22 @@ return $default(_that.useNativeCheckout,_that.enableWishlist,_that.enableSocialL
 @JsonSerializable()
 
 class _FeatureFlags implements FeatureFlags {
-  const _FeatureFlags({this.useNativeCheckout = false, this.enableWishlist = false, this.enableSocialLogin = false});
+  const _FeatureFlags({this.useNativeCheckout = false, this.enableWishlist = false, this.enableSocialLogin = false, this.enablePushNotifications = true, final  List<String> supportedLanguages = const [EN, AR], this.defaultLanguage = EN, this.enableLanguageSwitching = false}): _supportedLanguages = supportedLanguages;
   factory _FeatureFlags.fromJson(Map<String, dynamic> json) => _$FeatureFlagsFromJson(json);
 
 @override@JsonKey() final  bool useNativeCheckout;
 @override@JsonKey() final  bool enableWishlist;
 @override@JsonKey() final  bool enableSocialLogin;
+@override@JsonKey() final  bool enablePushNotifications;
+ final  List<String> _supportedLanguages;
+@override@JsonKey() List<String> get supportedLanguages {
+  if (_supportedLanguages is EqualUnmodifiableListView) return _supportedLanguages;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_supportedLanguages);
+}
+
+@override@JsonKey() final  String defaultLanguage;
+@override@JsonKey() final  bool enableLanguageSwitching;
 
 /// Create a copy of FeatureFlags
 /// with the given fields replaced by the non-null parameter values.
@@ -826,16 +840,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeatureFlags&&(identical(other.useNativeCheckout, useNativeCheckout) || other.useNativeCheckout == useNativeCheckout)&&(identical(other.enableWishlist, enableWishlist) || other.enableWishlist == enableWishlist)&&(identical(other.enableSocialLogin, enableSocialLogin) || other.enableSocialLogin == enableSocialLogin));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeatureFlags&&(identical(other.useNativeCheckout, useNativeCheckout) || other.useNativeCheckout == useNativeCheckout)&&(identical(other.enableWishlist, enableWishlist) || other.enableWishlist == enableWishlist)&&(identical(other.enableSocialLogin, enableSocialLogin) || other.enableSocialLogin == enableSocialLogin)&&(identical(other.enablePushNotifications, enablePushNotifications) || other.enablePushNotifications == enablePushNotifications)&&const DeepCollectionEquality().equals(other._supportedLanguages, _supportedLanguages)&&(identical(other.defaultLanguage, defaultLanguage) || other.defaultLanguage == defaultLanguage)&&(identical(other.enableLanguageSwitching, enableLanguageSwitching) || other.enableLanguageSwitching == enableLanguageSwitching));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,useNativeCheckout,enableWishlist,enableSocialLogin);
+int get hashCode => Object.hash(runtimeType,useNativeCheckout,enableWishlist,enableSocialLogin,enablePushNotifications,const DeepCollectionEquality().hash(_supportedLanguages),defaultLanguage,enableLanguageSwitching);
 
 @override
 String toString() {
-  return 'FeatureFlags(useNativeCheckout: $useNativeCheckout, enableWishlist: $enableWishlist, enableSocialLogin: $enableSocialLogin)';
+  return 'FeatureFlags(useNativeCheckout: $useNativeCheckout, enableWishlist: $enableWishlist, enableSocialLogin: $enableSocialLogin, enablePushNotifications: $enablePushNotifications, supportedLanguages: $supportedLanguages, defaultLanguage: $defaultLanguage, enableLanguageSwitching: $enableLanguageSwitching)';
 }
 
 
@@ -846,7 +860,7 @@ abstract mixin class _$FeatureFlagsCopyWith<$Res> implements $FeatureFlagsCopyWi
   factory _$FeatureFlagsCopyWith(_FeatureFlags value, $Res Function(_FeatureFlags) _then) = __$FeatureFlagsCopyWithImpl;
 @override @useResult
 $Res call({
- bool useNativeCheckout, bool enableWishlist, bool enableSocialLogin
+ bool useNativeCheckout, bool enableWishlist, bool enableSocialLogin, bool enablePushNotifications, List<String> supportedLanguages, String defaultLanguage, bool enableLanguageSwitching
 });
 
 
@@ -863,11 +877,15 @@ class __$FeatureFlagsCopyWithImpl<$Res>
 
 /// Create a copy of FeatureFlags
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? useNativeCheckout = null,Object? enableWishlist = null,Object? enableSocialLogin = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? useNativeCheckout = null,Object? enableWishlist = null,Object? enableSocialLogin = null,Object? enablePushNotifications = null,Object? supportedLanguages = null,Object? defaultLanguage = null,Object? enableLanguageSwitching = null,}) {
   return _then(_FeatureFlags(
 useNativeCheckout: null == useNativeCheckout ? _self.useNativeCheckout : useNativeCheckout // ignore: cast_nullable_to_non_nullable
 as bool,enableWishlist: null == enableWishlist ? _self.enableWishlist : enableWishlist // ignore: cast_nullable_to_non_nullable
 as bool,enableSocialLogin: null == enableSocialLogin ? _self.enableSocialLogin : enableSocialLogin // ignore: cast_nullable_to_non_nullable
+as bool,enablePushNotifications: null == enablePushNotifications ? _self.enablePushNotifications : enablePushNotifications // ignore: cast_nullable_to_non_nullable
+as bool,supportedLanguages: null == supportedLanguages ? _self._supportedLanguages : supportedLanguages // ignore: cast_nullable_to_non_nullable
+as List<String>,defaultLanguage: null == defaultLanguage ? _self.defaultLanguage : defaultLanguage // ignore: cast_nullable_to_non_nullable
+as String,enableLanguageSwitching: null == enableLanguageSwitching ? _self.enableLanguageSwitching : enableLanguageSwitching // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

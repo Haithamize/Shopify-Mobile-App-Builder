@@ -7,7 +7,7 @@ abstract class ConfigLoader {
   Future<MerchantConfig> load();
 }
 
-// 1. Production Loader (Reads from CI/CD Injected Flags)
+// 1. Production Loader (Reads from CI/CD Injected Flags) used to inject secrets via pipeline
 class EnvironmentConfigLoader implements ConfigLoader {
   @override
   Future<MerchantConfig> load() async {

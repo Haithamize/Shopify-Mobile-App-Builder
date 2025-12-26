@@ -12,7 +12,9 @@
   "features": {
     "useNativeCheckout": true,
     "enableWishlist": true,
-    "enableSocialLogin": false
+    "enableSocialLogin": false,
+    "supportedLanguages": ["en", "ar"],
+    "enablePushNotifications": true
   },
   "integrationKeys": {
     "firebase_android": "google-services-mock.json"

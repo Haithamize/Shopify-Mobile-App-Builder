@@ -1,4 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import '../../constants/constants.dart';
 // logic: part 'filename.freezed.dart';
 part 'merchant_config.freezed.dart';
 // logic: part 'filename.g.dart'; (for JSON parsing)
@@ -39,6 +41,10 @@ abstract class FeatureFlags with _$FeatureFlags {
     @Default(false) bool useNativeCheckout,
     @Default(false) bool enableWishlist,
     @Default(false) bool enableSocialLogin,
+    @Default(true) bool enablePushNotifications,
+    @Default([EN, AR]) List<String> supportedLanguages,
+    @Default(EN) String defaultLanguage,
+    @Default(false) bool enableLanguageSwitching,
   }) = _FeatureFlags;
 
   factory FeatureFlags.fromJson(Map<String, dynamic> json) =>

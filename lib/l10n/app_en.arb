@@ -1,0 +1,9 @@
+{
+  "welcomeMessage": "Welcome to {appName}",
+  "@welcomeMessage": {
+    "placeholders": {
+      "appName": { "type": "String" }
+    }
+  },
+  "checkout": "Checkout"
+}
