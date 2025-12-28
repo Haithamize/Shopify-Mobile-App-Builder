@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shopiney/ui/theme/app_theme.dart';
 
 import 'core/di/injection_container.dart';
 import 'core/config/merchant_config.dart';
@@ -60,21 +61,31 @@ class RootApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = sl<MerchantConfig>();
+
     return MaterialApp.router(
       title: config.appName,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      theme: ThemeData(
-        // Dynamic Primary Color
-        primaryColor: _hexToColor(config.theme.primaryColor),
-        scaffoldBackgroundColor: _hexToColor(config.theme.secondaryColor),
-        useMaterial3: true,
-      ),
 
-      // Localization setup
+      /// ✅ White-label theme driven by MerchantConfig
+      theme: AppTheme.fromMerchant(config),
+
+      /// ✅ Localization setup
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales:
-      config.features.supportedLanguages.map((code) => Locale(code)),
+      supportedLocales: config.features.supportedLanguages
+          .map((code) => Locale(code))
+          .toList(),
+
+      /// ✅ Enforces RTL/LTR consistently for all widgets
+      builder: (context, child) {
+        final locale = Localizations.localeOf(context);
+        final isRtl = const ['ar', 'fa', 'ur', 'he'].contains(locale.languageCode);
+
+        return Directionality(
+          textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

@@ -15,4 +15,101 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkout => 'Checkout';
+
+  @override
+  String get homeCategories => 'Categories';
+
+  @override
+  String get homeSeeAll => 'See All';
+
+  @override
+  String get homeFeaturedCollections => 'Featured Collections';
+
+  @override
+  String get homeViewAll => 'View All';
+
+  @override
+  String get homeBestSellers => 'Best Sellers';
+
+  @override
+  String get homeExploreCollection => 'Explore Collection';
+
+  @override
+  String get homeSpring2025 => 'SPRING 2025';
+
+  @override
+  String get homeNewSeasonArrivals => 'New Season Arrivals';
+
+  @override
+  String get homeSearch => 'Search';
+
+  @override
+  String get homeNotifications => 'Notifications';
+
+  @override
+  String get homeCart => 'Cart';
+
+  @override
+  String get men => 'Men';
+
+  @override
+  String get women => 'Women';
+
+  @override
+  String get accessories => 'Accessories';
+
+  @override
+  String get shoes => 'Shoes';
+
+  @override
+  String get collectionsTitle => 'Collections';
+
+  @override
+  String get collectionsSubtitle => 'Discover our curated collections';
+
+  @override
+  String homeItemsCount(int count) {
+    return '$count items';
+  }
+
+  @override
+  String get productsAllTitle => 'All Products';
+
+  @override
+  String get productsFilterAll => 'All';
+
+  @override
+  String get productsFilterOnSale => 'On Sale';
+
+  @override
+  String get productsFilterNew => 'New';
+
+  @override
+  String get productsFilterPopular => 'Popular';
+
+  @override
+  String productsCount(Object count) {
+    return '$count products';
+  }
+
+  @override
+  String get productsQuickAdd => 'Quick Add';
+
+  @override
+  String get productsSort => 'Sort';
+
+  @override
+  String get productsFilter => 'Filter';
+
+  @override
+  String get productsSortPriceLowHigh => 'Price: Low to High';
+
+  @override
+  String get productsSortPriceHighLow => 'Price: High to Low';
+
+  @override
+  String get productsSortNewest => 'Newest';
+
+  @override
+  String get productsSortPopular => 'Popular';
 }

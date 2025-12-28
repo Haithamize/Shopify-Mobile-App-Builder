@@ -1,9 +1,39 @@
 {
   "welcomeMessage": "Welcome to {appName}",
-  "@welcomeMessage": {
-    "placeholders": {
-      "appName": { "type": "String" }
-    }
-  },
-  "checkout": "Checkout"
+  "@welcomeMessage": { "placeholders": { "appName": { "type": "String" } } },
+  "checkout": "Checkout",
+  "homeCategories": "Categories",
+  "homeSeeAll": "See All",
+  "homeFeaturedCollections": "Featured Collections",
+  "homeViewAll": "View All",
+  "homeBestSellers": "Best Sellers",
+  "homeExploreCollection": "Explore Collection",
+  "homeSpring2025": "SPRING 2025",
+  "homeNewSeasonArrivals": "New Season Arrivals",
+  "homeSearch": "Search",
+  "homeNotifications": "Notifications",
+  "homeCart": "Cart",
+  "men": "Men",
+  "women": "Women",
+  "accessories": "Accessories",
+  "shoes": "Shoes",
+  "collectionsTitle": "Collections",
+  "collectionsSubtitle": "Discover our curated collections",
+  "homeItemsCount": "{count} items",
+  "productsAllTitle": "All Products",
+  "productsFilterAll": "All",
+  "productsFilterOnSale": "On Sale",
+  "productsFilterNew": "New",
+  "productsFilterPopular": "Popular",
+  "productsCount": "{count} products",
+  "productsQuickAdd": "Quick Add",
+  "productsSort": "Sort",
+  "productsFilter": "Filter",
+  "productsSortPriceLowHigh": "Price: Low to High",
+  "productsSortPriceHighLow": "Price: High to Low",
+  "productsSortNewest": "Newest",
+  "productsSortPopular": "Popular",
+  "@homeItemsCount": {
+    "placeholders": { "count": { "type": "int" } }
+  }
 }

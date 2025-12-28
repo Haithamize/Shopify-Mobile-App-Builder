@@ -109,6 +109,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Checkout'**
   String get checkout;
+
+  /// No description provided for @homeCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get homeCategories;
+
+  /// No description provided for @homeSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See All'**
+  String get homeSeeAll;
+
+  /// No description provided for @homeFeaturedCollections.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured Collections'**
+  String get homeFeaturedCollections;
+
+  /// No description provided for @homeViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View All'**
+  String get homeViewAll;
+
+  /// No description provided for @homeBestSellers.
+  ///
+  /// In en, this message translates to:
+  /// **'Best Sellers'**
+  String get homeBestSellers;
+
+  /// No description provided for @homeExploreCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore Collection'**
+  String get homeExploreCollection;
+
+  /// No description provided for @homeSpring2025.
+  ///
+  /// In en, this message translates to:
+  /// **'SPRING 2025'**
+  String get homeSpring2025;
+
+  /// No description provided for @homeNewSeasonArrivals.
+  ///
+  /// In en, this message translates to:
+  /// **'New Season Arrivals'**
+  String get homeNewSeasonArrivals;
+
+  /// No description provided for @homeSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get homeSearch;
+
+  /// No description provided for @homeNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get homeNotifications;
+
+  /// No description provided for @homeCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart'**
+  String get homeCart;
+
+  /// No description provided for @men.
+  ///
+  /// In en, this message translates to:
+  /// **'Men'**
+  String get men;
+
+  /// No description provided for @women.
+  ///
+  /// In en, this message translates to:
+  /// **'Women'**
+  String get women;
+
+  /// No description provided for @accessories.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessories'**
+  String get accessories;
+
+  /// No description provided for @shoes.
+  ///
+  /// In en, this message translates to:
+  /// **'Shoes'**
+  String get shoes;
+
+  /// No description provided for @collectionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Collections'**
+  String get collectionsTitle;
+
+  /// No description provided for @collectionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover our curated collections'**
+  String get collectionsSubtitle;
+
+  /// No description provided for @homeItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String homeItemsCount(int count);
+
+  /// No description provided for @productsAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All Products'**
+  String get productsAllTitle;
+
+  /// No description provided for @productsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get productsFilterAll;
+
+  /// No description provided for @productsFilterOnSale.
+  ///
+  /// In en, this message translates to:
+  /// **'On Sale'**
+  String get productsFilterOnSale;
+
+  /// No description provided for @productsFilterNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get productsFilterNew;
+
+  /// No description provided for @productsFilterPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get productsFilterPopular;
+
+  /// No description provided for @productsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} products'**
+  String productsCount(Object count);
+
+  /// No description provided for @productsQuickAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Add'**
+  String get productsQuickAdd;
+
+  /// No description provided for @productsSort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get productsSort;
+
+  /// No description provided for @productsFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get productsFilter;
+
+  /// No description provided for @productsSortPriceLowHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'Price: Low to High'**
+  String get productsSortPriceLowHigh;
+
+  /// No description provided for @productsSortPriceHighLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Price: High to Low'**
+  String get productsSortPriceHighLow;
+
+  /// No description provided for @productsSortNewest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get productsSortNewest;
+
+  /// No description provided for @productsSortPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get productsSortPopular;
 }
 
 class _AppLocalizationsDelegate
