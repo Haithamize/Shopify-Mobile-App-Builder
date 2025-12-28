@@ -143,3 +143,8 @@ temp/
 android/app/src/main/res/mipmap-*/ic_launcher*.png
 android/app/src/main/res/mipmap-*/ic_launcher_round*.png
 android/app/src/main/res/values-night/ # If you generate dark mode resources
+
+# linux/windows/macos
+linux
+windows
+macos
