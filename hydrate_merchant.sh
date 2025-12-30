@@ -1,17 +1,57 @@
 #!/bin/bash
 
+set -euo pipefail
+
+#############################################
+# hydrate_merchant.sh
+#
+# Goal:
+#  - Transform the Flutter repo into a dedicated merchant build by
+#    swapping identifiers + assets (Firebase config, icons, app name).
+#
+# Inputs:
+#  1) MERCHANT_ID   -> selects vault folder merchant_vault/<MERCHANT_ID>
+#  2) PACKAGE_NAME  -> Android applicationId + iOS bundle id replacement target
+#  3) APP_NAME      -> Android strings.xml + iOS plist display name
+#
+# What this script DOES:
+#  - Android: updates applicationId (build.gradle.kts), app_name (strings.xml),
+#    copies google-services.json, copies notification icons, generates launcher icons.
+#  - iOS: copies GoogleService-Info.plist, updates Info.plist display names,
+#    attempts bundle id replacement in project.pbxproj (best-effort).
+#
+# What it does NOT do:
+#  - signing (keystore / provisioning profiles)
+#  - uploading to stores
+#
+#############################################
+
+ts() { date +"%Y-%m-%d %H:%M:%S"; }
+log() { echo "[$(ts)] $*"; }
+ok()  { echo "[$(ts)] ✅ $*"; }
+warn(){ echo "[$(ts)] ⚠️ $*"; }
+die() { echo "[$(ts)] ❌ $*"; exit 1; }
+
+on_error() {
+  local exit_code=$?
+  echo "[$(ts)] ❌ Script failed (exit=$exit_code) at line $1: $2"
+  exit $exit_code
+}
+trap 'on_error $LINENO "$BASH_COMMAND"' ERR
+
+
 # Usage: ./hydrate_merchant.sh <MERCHANT_ID> <PACKAGE_NAME> <APP_NAME>
 MERCHANT_ID=$1
 PACKAGE_NAME=$2
 APP_NAME=$3
 
 if [ -z "$MERCHANT_ID" ] || [ -z "$PACKAGE_NAME" ] || [ -z "$APP_NAME" ]; then
-  echo "❌ Usage: ./hydrate_merchant.sh <MERCHANT_ID> <PACKAGE_NAME> <APP_NAME>"
+  log "❌ Usage: ./hydrate_merchant.sh <MERCHANT_ID> <PACKAGE_NAME> <APP_NAME>"
   exit 1
 fi
 
 if [[ "$PACKAGE_NAME" =~ [A-Z] ]]; then
-  echo "❌ PACKAGE_NAME must be lowercase (Android/Play Store requirement). Got: $PACKAGE_NAME"
+  log "❌ PACKAGE_NAME must be lowercase (Android/Play Store requirement). Got: $PACKAGE_NAME"
   exit 1
 fi
 
@@ -20,8 +60,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$SCRIPT_DIR"
 VAULT_DIR="$PROJECT_ROOT/merchant_vault/$MERCHANT_ID"
 
-echo "🚀 Hydrating App for Merchant: $MERCHANT_ID"
-echo "📁 Project Root: $PROJECT_ROOT"
+log "🚀 Hydrating App for Merchant: $MERCHANT_ID"
+log "📁 Project Root: $PROJECT_ROOT"
 
 # Function to handle sed cross-platform (macOS vs Linux)
 run_sed() {
@@ -35,7 +75,7 @@ run_sed() {
 }
 
 # --- STEP 1: ANDROID NATIVE UPDATES ---
-echo "🆔 Updating Android ApplicationId & Namespace..."
+log "🆔 Updating Android ApplicationId & Namespace..."
 
 ANDROID_APP_GRADLE="$PROJECT_ROOT/android/app/build.gradle.kts"
 ANDROID_MANIFEST="$PROJECT_ROOT/android/app/src/main/AndroidManifest.xml"
@@ -47,21 +87,21 @@ STABLE_MAIN_PATH="$PROJECT_ROOT/android/app/src/main/kotlin/com/shopifyme/MainAc
 
 # Check if files exist
 if [ ! -f "$ANDROID_APP_GRADLE" ]; then
-    echo "❌ Error: $ANDROID_APP_GRADLE not found!"
+    log "❌ Error: $ANDROID_APP_GRADLE not found!"
     exit 1
 fi
 
 if [ ! -f "$ANDROID_MANIFEST" ]; then
-    echo "❌ Error: $ANDROID_MANIFEST not found!"
+    log "❌ Error: $ANDROID_MANIFEST not found!"
     exit 1
 fi
 
 # Get current package name before changing it
 OLD_PACKAGE=$(grep -o 'applicationId = "[^"]*"' "$ANDROID_APP_GRADLE" | head -1 | sed 's/applicationId = "//' | sed 's/"//')
-echo "   Current package: $OLD_PACKAGE → New package: $PACKAGE_NAME"
+log "   Current package: $OLD_PACKAGE → New package: $PACKAGE_NAME"
 
 # 1. Update namespace (Kotlin DSL syntax)
-#echo "   Updating namespace in build.gradle..."
+#log "   Updating namespace in build.gradle..."
 #run_sed "s/namespace *= *\".*\"/namespace = \"$PACKAGE_NAME\"/" "$ANDROID_APP_GRADLE"
 
 # 2. Update applicationId (Kotlin DSL syntax)

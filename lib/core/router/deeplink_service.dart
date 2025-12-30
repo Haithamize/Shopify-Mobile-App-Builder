@@ -5,31 +5,33 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/deeplink/merchant_context_service.dart';
+
+
 class DeepLinkService {
-  DeepLinkService(this._router);
+  DeepLinkService(this._router, this._merchantContext);
 
   final GoRouter _router;
-  final AppLinks _appLinks = AppLinks();
+  final MerchantContextService _merchantContext;
 
+  final AppLinks _appLinks = AppLinks();
   StreamSubscription<Uri>? _sub;
 
   Future<void> init() async {
-    // 1) Initial link (cold start)
     try {
       final initial = await _appLinks.getInitialLink();
       if (initial != null) {
         debugPrint('🔗 initial link: $initial');
-        _handleUri(initial);
+        await _handleUri(initial);
       }
     } catch (e) {
       debugPrint('⚠️ getInitialLink error: $e');
     }
 
-    // 2) Stream (app running / resumed)
     _sub = _appLinks.uriLinkStream.listen(
-          (uri) {
+          (uri) async {
         debugPrint('🔗 uri stream: $uri');
-        _handleUri(uri);
+        await _handleUri(uri);
       },
       onError: (e) => debugPrint('⚠️ uriLinkStream error: $e'),
     );
@@ -40,53 +42,82 @@ class DeepLinkService {
     _sub = null;
   }
 
-  /// Called from push notifications: data['deeplink'] or data['url']
   void openFromString(String? value) {
     if (value == null || value.trim().isEmpty) return;
-
     final uri = Uri.tryParse(value.trim());
     if (uri == null) {
       debugPrint('⚠️ Invalid deeplink string: $value');
       return;
     }
-
     _handleUri(uri);
   }
 
-  void _handleUri(Uri uri) {
-    final path = _normalizeToRouterPath(uri);
-    if (path == null || path.isEmpty) return;
+  Future<void> _handleUri(Uri uri) async {
+    final parsed = _parse(uri);
+    if (parsed == null) return;
 
-    debugPrint('🧭 deeplink normalized → $path');
+    if (parsed.merchantId != null && parsed.merchantId!.isNotEmpty) {
+      try {
+        await _merchantContext.switchTo(parsed.merchantId!);
+      } catch (e) {
+        debugPrint('❌ merchant switch failed: $e');
+        return;
+      }
+    }
 
-    // ✅ critical: ensure router navigation happens AFTER first frame
+    debugPrint('🧭 deeplink normalized → ${parsed.path}');
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
-        _router.go(path);
+        _router.go(parsed.path);
       } catch (e) {
-        debugPrint('❌ router.go failed for "$path": $e');
+        debugPrint('❌ router.go failed for "${parsed.path}": $e');
       }
     });
   }
 
-  /// Converts:
-  /// - shopifyme://orders/123  -> /orders/123
-  /// - shopifyme://product/9   -> /product/9
-  /// - https://x.com/orders/1  -> /orders/1
-  String? _normalizeToRouterPath(Uri uri) {
-    // If this is a universal link like https://domain.com/orders/123
+  _ParsedLink? _parse(Uri uri) {
+    // Universal links
     if (uri.scheme == 'http' || uri.scheme == 'https') {
-      return uri.path.isEmpty ? '/' : uri.path;
+      return _fromPath(uri.path, uri.queryParameters);
     }
 
-    // Custom scheme: shopifyme://orders/123
-    // Important: in custom scheme URIs, the "host" is the first segment.
-    // Example: scheme=shopifyme host=orders path=/123
-    final host = uri.host; // "orders"
-    final path = uri.path; // "/123"
-    if (host.isEmpty) return null;
+    // Custom scheme: shopifyme://...
+    if (uri.scheme == 'shopifyme') {
+      final combined = '/${uri.host}${uri.path}'; // host is first segment
+      return _fromPath(combined, uri.queryParameters);
+    }
 
-    final combined = '/$host$path';
-    return combined == '/' ? '/' : combined;
+    return null;
   }
+
+  _ParsedLink? _fromPath(String path, Map<String, String> qp) {
+    final segments = Uri.parse(path).pathSegments;
+    if (segments.isEmpty) return const _ParsedLink(path: '/');
+
+    // ✅ Demo schema: /m/<merchantId>/<route...>
+    if (segments.length >= 2 && segments.first == 'm') {
+      final merchantId = segments[1];
+      final rest = segments.skip(2).join('/');
+      final routePath = rest.isEmpty ? '/' : '/$rest';
+      return _ParsedLink(
+        merchantId: merchantId,
+        path: _applyQuery(routePath, qp),
+      );
+    }
+
+    // Dedicated schema: /product/123 etc.
+    return _ParsedLink(path: _applyQuery('/${segments.join('/')}', qp));
+  }
+
+  String _applyQuery(String path, Map<String, String> qp) {
+    if (qp.isEmpty) return path;
+    return Uri(path: path, queryParameters: qp).toString();
+  }
+}
+
+class _ParsedLink {
+  const _ParsedLink({required this.path, this.merchantId});
+  final String path;
+  final String? merchantId;
 }

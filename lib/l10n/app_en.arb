@@ -1,6 +1,7 @@
 {
   "welcomeMessage": "Welcome to {appName}",
   "@welcomeMessage": { "placeholders": { "appName": { "type": "String" } } },
+
   "checkout": "Checkout",
   "homeCategories": "Categories",
   "homeSeeAll": "See All",
@@ -20,12 +21,16 @@
   "collectionsTitle": "Collections",
   "collectionsSubtitle": "Discover our curated collections",
   "homeItemsCount": "{count} items",
+  "@homeItemsCount": { "placeholders": { "count": { "type": "int" } } },
+
   "productsAllTitle": "All Products",
   "productsFilterAll": "All",
   "productsFilterOnSale": "On Sale",
   "productsFilterNew": "New",
   "productsFilterPopular": "Popular",
   "productsCount": "{count} products",
+  "@productsCount": { "placeholders": { "count": { "type": "int" } } },
+
   "productsQuickAdd": "Quick Add",
   "productsSort": "Sort",
   "productsFilter": "Filter",
@@ -33,7 +38,23 @@
   "productsSortPriceHighLow": "Price: High to Low",
   "productsSortNewest": "Newest",
   "productsSortPopular": "Popular",
-  "@homeItemsCount": {
-    "placeholders": { "count": { "type": "int" } }
+  "retry": "Retry",
+  "noResults": "No results",
+
+  "productColor": "Color",
+  "productSize": "Size",
+  "productQuantity": "Quantity",
+  "productDescription": "Description",
+  "productAddToCart": "Add to Cart",
+  "productSale": "SALE",
+  "productAddedToCart": "Added {qty} to cart",
+  "@productAddedToCart": { "placeholders": { "qty": { "type": "int" } } },
+
+  "productAddToCartTotal": "{label} — {total}",
+  "@productAddToCartTotal": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "total": { "type": "String" }
+    }
   }
 }

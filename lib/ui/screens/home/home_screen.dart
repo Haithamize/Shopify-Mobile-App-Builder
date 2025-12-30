@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config/merchant_config.dart';
+import '../../../core/config/deeplink/merchant_context_service.dart';
 import '../../../core/di/injection_container.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../layout/responsive.dart';
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final config = sl<MerchantConfig>();
+    final config = sl<MerchantContextService>().current!;
     final flags = config.features;
     final l10n = AppLocalizations.of(context)!;
 

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shopiney/ui/screens/product/product_details/product_details_screen.dart';
 
+import '../../features/catalogue/bloc/products_bloc.dart';
+import '../../features/catalogue/bloc/products_event.dart';
 import '../../ui/screens/cart/cart_screen.dart';
 import '../../ui/screens/categories/categories_screen.dart';
 import '../../ui/screens/collections/collections_screen.dart';
 import '../../ui/screens/home/home_screen.dart';
-import '../../ui/screens/orders/order_details.dart';
 import '../../ui/screens/product/all_products_screen.dart';
-import '../../ui/screens/product/product_screen.dart';
 import '../../ui/screens/shell/bottom_shell.dart';
+import '../di/injection_container.dart';
 
 /// Root navigator key:
 /// - used for top-level navigation
@@ -80,23 +83,21 @@ class AppRouter {
       /// - shopifyme://product/9 -> /product/9
       /// - https://domain.com/product/9 -> /product/9
       GoRoute(
-        path: '/product/:id',
+        path: '/products',
         builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return ProductScreen(productId: id);
+          return BlocProvider(
+            create: (_) => sl<ProductsBloc>()..add(const LoadProducts(limit: 30)),
+            child: const AllProductsScreen(),
+          );
         },
       ),
 
-      GoRoute(
-        path: '/products',
-        builder: (context, state) => const AllProductsScreen(),
-      ),
 
       GoRoute(
-        path: '/orders/:id',
+        path: '/product/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return OrderDetailsScreen(orderId: id);
+          return ProductDetailsScreen(productId: id);
         },
       ),
     ],

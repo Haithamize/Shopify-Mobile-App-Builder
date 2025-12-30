@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/deeplink/merchant_context_service.dart';
 import '../../../core/di/injection_container.dart';
 import '../../../core/config/merchant_config.dart';
 import '../../../l10n/app_localizations.dart';
@@ -27,7 +28,7 @@ class CategoriesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = context.r;
     final l10n = AppLocalizations.of(context)!;
-    final config = sl<MerchantConfig>(); // for future merchant-level logic, brand assets, etc.
+    final config = sl<MerchantContextService>().current!; // for future merchant-level logic, brand assets, etc.
 
     // Grid columns adapt based on width.
     // minTileWidth controls density.

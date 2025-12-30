@@ -1,10 +1,15 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'merchant_config.dart';
 
 // Interface
 abstract class ConfigLoader {
+  /// Dedicated app: loads the config fixed at build-time or local mock.
   Future<MerchantConfig> load();
+
+  /// Demo app: loads config for a specific merchantId (QR / deep link / login).
+  Future<MerchantConfig> loadByMerchantId(String merchantId);
 }
 
 // 1. Production Loader (Reads from CI/CD Injected Flags) used to inject secrets via pipeline
@@ -37,6 +42,15 @@ class EnvironmentConfigLoader implements ConfigLoader {
       integrationKeys: {},
     );
   }
+
+  @override
+  Future<MerchantConfig> loadByMerchantId(String merchantId) async {
+    // In real prod demo-app: call your backend here using merchantId.
+    // For now fallback to load() or throw.
+    debugPrint('⚠️ EnvironmentConfigLoader.loadByMerchantId($merchantId) called. '
+        'In production demo app, this should call your backend.');
+    return load();
+  }
 }
 
 // 2. Mock Loader (Reads from Local JSON for Dev)
@@ -50,5 +64,16 @@ class MockConfigLoader implements ConfigLoader {
     final jsonMap = json.decode(jsonString);
 
     return MerchantConfig.fromJson(jsonMap);
+  }
+
+  @override
+  Future<MerchantConfig> loadByMerchantId(String merchantId) async {
+    // ✅ For now: reuse the same mock config but override merchantId and appName
+    // so you can see switching works immediately.
+    final base = await load();
+    return base.copyWith(
+      merchantId: merchantId,
+      appName: '${base.appName} ($merchantId)',
+    );
   }
 }

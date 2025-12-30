@@ -88,7 +88,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get productsFilterPopular => 'Popular';
 
   @override
-  String productsCount(Object count) {
+  String productsCount(int count) {
     return '$count products';
   }
 
@@ -112,4 +112,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get productsSortPopular => 'Popular';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get noResults => 'No results';
+
+  @override
+  String get productColor => 'Color';
+
+  @override
+  String get productSize => 'Size';
+
+  @override
+  String get productQuantity => 'Quantity';
+
+  @override
+  String get productDescription => 'Description';
+
+  @override
+  String get productAddToCart => 'Add to Cart';
+
+  @override
+  String get productSale => 'SALE';
+
+  @override
+  String productAddedToCart(int qty) {
+    return 'Added $qty to cart';
+  }
+
+  @override
+  String productAddToCartTotal(String label, String total) {
+    return '$label — $total';
+  }
 }

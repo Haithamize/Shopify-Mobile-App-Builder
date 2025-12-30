@@ -1,0 +1,111 @@
+workflows:
+  demo_build:
+    name: Demo app build (hydration + APK + iOS simulator)
+    max_build_duration: 90
+    environment:
+      flutter: stable
+
+      # These are set in Codemagic UI as environment variables.
+      # For demo_build, you’ll set:
+      # MERCHANT_ID=demo_default
+      # PACKAGE_NAME=com.shopifyme.demo (example)
+      # APP_NAME=ShopifyMe Demo
+
+    scripts:
+      - name: 📦 Flutter pub get
+        script: |
+          flutter --version
+          flutter pub get
+
+      - name: 🧩 Hydrate (demo)
+        script: |
+          chmod +x ./hydrate_merchant.sh
+          ./hydrate_merchant.sh "$MERCHANT_ID" "$PACKAGE_NAME" "$APP_NAME"
+
+      - name: 🤖 Build Android APK (debug)
+        script: |
+          flutter build apk --debug
+
+      - name: 🍎 Build iOS (simulator debug, no signing needed)
+        script: |
+          cd ios
+          pod repo update || true
+          cd ..
+          flutter build ios --debug --simulator
+
+      - name: 📦 Package iOS simulator app as artifact
+        script: |
+          mkdir -p build_artifacts
+          # Runner.app location can vary by Flutter version; this is the common one:
+          APP_PATH="build/ios/iphonesimulator/Runner.app"
+          if [ -d "$APP_PATH" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build_artifacts/Runner-simulator.app.zip"
+          else
+            echo "Runner.app not found at $APP_PATH"
+            find build/ios -maxdepth 4 -type d -name "Runner.app" -print || true
+          fi
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-debug.apk
+      - build_artifacts/*.zip
+      - hydration_verification.txt
+
+    publishing:
+      email:
+        recipients:
+          - h.hysam@yahoo.com
+        notify:
+          success: true
+          failure: true
+
+  dedicated_build:
+    name: Dedicated merchant build (hydration + APK + iOS simulator)
+    max_build_duration: 90
+    environment:
+      flutter: stable
+
+    scripts:
+      - name: 📦 Flutter pub get
+        script: |
+          flutter --version
+          flutter pub get
+
+      - name: 🧩 Hydrate (dedicated)
+        script: |
+          chmod +x ./hydrate_merchant.sh
+          ./hydrate_merchant.sh "$MERCHANT_ID" "$PACKAGE_NAME" "$APP_NAME"
+
+      - name: 🤖 Build Android APK (debug)
+        script: |
+          flutter build apk --debug
+
+      - name: 🍎 Build iOS (simulator debug)
+        script: |
+          cd ios
+          pod repo update || true
+          cd ..
+          flutter build ios --debug --simulator
+
+      - name: 📦 Package iOS simulator app
+        script: |
+          mkdir -p build_artifacts
+          APP_PATH="build/ios/iphonesimulator/Runner.app"
+          if [ -d "$APP_PATH" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build_artifacts/Runner-simulator.app.zip"
+          else
+            echo "Runner.app not found at $APP_PATH"
+            find build/ios -maxdepth 4 -type d -name "Runner.app" -print || true
+          fi
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-debug.apk
+      - build_artifacts/*.zip
+      - hydration_verification.txt
+
+    publishing:
+      email:
+        recipients:
+          - h.hysam@yahoo.com
+        notify:
+          success: true
+          failure: true

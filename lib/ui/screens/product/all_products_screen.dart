@@ -1,24 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shopify_flutter/shopify_flutter.dart' as sf;
 
+import '../../../core/config/deeplink/merchant_context_service.dart';
 import '../../../core/config/merchant_config.dart';
 import '../../../core/di/injection_container.dart';
+import '../../../features/catalogue/bloc/products_bloc.dart';
+import '../../../features/catalogue/bloc/products_event.dart';
+import '../../../features/catalogue/bloc/products_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../layout/responsive.dart';
 
-/// AllProductsScreen:
-/// - Matches kit: top bar (back + title + filter/sort icons)
-/// - Filter chips row (All/On Sale/New/Popular)
-/// - Product grid with badges + wishlist + quick add
-/// - Filtering + sorting logic is implemented (local demo data)
+
+/// AllProductsScreen (Bloc-driven):
+/// - UI stays the same (chips + grid + sheets)
+/// - Data comes from ProductsBloc (Shopify via repository + cache)
+/// - Local filter/sort affects the in-memory list (fast)
+/// - Optional: keep URL in sync using replace() (doesn't break back stack)
 ///
-/// White-label:
-/// - feature flags can hide wishlist, quick add, etc.
-/// - later swap demo list -> Shopify results without changing the UI structure
-///
-/// Deeplink/push:
-/// - make route /products
-/// - optional query params: ?filter=all|sale|new|popular&sort=price_asc|price_desc|newest|popular
+/// NOTE:
+/// This screen expects that YOU provide it with a BlocProvider in the route:
+/// BlocProvider(
+///   create: (_) => sl<ProductsBloc>()..add(const LoadProducts(limit: 30)),
+///   child: const AllProductsScreen(),
+/// )
 class AllProductsScreen extends StatefulWidget {
   const AllProductsScreen({super.key});
 
@@ -27,26 +33,30 @@ class AllProductsScreen extends StatefulWidget {
 }
 
 class _AllProductsScreenState extends State<AllProductsScreen>
+/// This tells Flutter: don’t dispose this screen’s state when it’s inside a tab/shell and you switch tabs.
+/// That prevents reloading and losing filter selection.
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
-  // Demo source list (replace with API later)
-  late final List<_ProductVM> _all = List<_ProductVM>.unmodifiable(_demoProducts);
-
   _ProductsFilter _filter = _ProductsFilter.all;
   _ProductsSort _sort = _ProductsSort.none;
 
-  // Optional: keep wishlist state local for demo
+  /// Avoid re-parsing same uri again and again (prevents snap-back issues)
+  Uri? _lastParsedUri;
+
+  /// Local wishlist only (fast + keeps demo behavior)
   final Set<String> _wishlisted = <String>{};
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Deeplink support via query params:
-    // /products?filter=new&sort=price_asc
+    // Deep link support via query params:
+    // /products?filter=sale&sort=price_asc
     final uri = GoRouterState.of(context).uri;
+    if (_lastParsedUri == uri) return;
+    _lastParsedUri = uri;
 
     final f = uri.queryParameters['filter'];
     final s = uri.queryParameters['sort'];
@@ -54,7 +64,6 @@ class _AllProductsScreenState extends State<AllProductsScreen>
     final parsedFilter = _ProductsFilterX.fromQuery(f);
     final parsedSort = _ProductsSortX.fromQuery(s);
 
-    // Only update if different to avoid rebuild loops
     if (parsedFilter != _filter || parsedSort != _sort) {
       setState(() {
         _filter = parsedFilter;
@@ -69,159 +78,262 @@ class _AllProductsScreenState extends State<AllProductsScreen>
 
     final r = context.r;
     final l10n = AppLocalizations.of(context)!;
-    final config = sl<MerchantConfig>();
+    final config = sl<MerchantContextService>().current!;
     final flags = config.features;
 
     final cols = r.columns(minTileWidth: 190, min: 2, max: 4);
 
-    final visible = _applyFilterAndSort(_all, _filter, _sort);
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        cacheExtent: (r.h * 1.2).clamp(600.0, 1200.0),
-        slivers: [
-          // ---------------------------------------------------------------
-          // Top bar (pinned)
-          // ---------------------------------------------------------------
-          SliverAppBar(
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            toolbarHeight: (r.w * 0.14).clamp(56.0, 68.0),
-            leading: IconButton(
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              onPressed: () {
-                // Pop if this screen was pushed. If it was opened via `go()`, there’s nothing to pop.
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop();
-                  return;
-                }
+      body: BlocConsumer<ProductsBloc, ProductsState>(
+        listenWhen: (prev, next) {
+          return next is ProductsError && prev.runtimeType != next.runtimeType;
+        },
+        listener: (context, state) {
+          if (state is ProductsError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
+          }
+        },
+        builder: (context, state) {
+          final isLoading = _isLoading(state);
+          final error = _errorMessage(state);
 
-                // GoRouter stack might still be able to pop in some nested navigators
-                if (GoRouter.of(context).canPop()) {
-                  context.pop();
-                  return;
-                }
+          final rawProducts = _products(state);
 
-                // Fallback: go to a safe place (adjust to your real root route)
-                context.go('/home'); // or '/home' or your tab route
-              },
-              icon: const Icon(Icons.arrow_back),
-            ),
-            centerTitle: true,
-            title: Text(
-              l10n.productsAllTitle,
-              textScaler: TextScaler.linear(r.textScale),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            actions: [
-              IconButton(
-                tooltip: l10n.productsFilter,
-                onPressed: () {
-                  _syncQueryParams();
-                  _openFilterSheet(context);
-                },
-                icon: const Icon(Icons.tune),
-              ),
-              IconButton(
-                tooltip: l10n.productsSort,
-                onPressed: () => _openSortSheet(context),
-                icon: const Icon(Icons.swap_vert),
-              ),
-              SizedBox(width: r.gutter / 2),
-            ],
-          ),
+// If there's no real data yet, show fake products in UI (TEMP)
+          final List<_ProductVM> vms = rawProducts.isEmpty
+              ? _kFakeProducts
+              : rawProducts.map(_vmFromShopify).toList(growable: false);
 
-          // ---------------------------------------------------------------
-          // Filter chips row (pinned-like section under app bar)
-          // ---------------------------------------------------------------
-          SliverPadding(
-            padding: EdgeInsets.only(top: r.s2),
-            sliver: SliverToBoxAdapter(
-              child: _FilterChipsRow(
-                selected: _filter,
-                onSelected: (f) {
-                  if (f == _filter) return;
-                  setState(() => _filter = f);
-                  _syncQueryParams(); // <-- keep URL in sync so it won't snap back
-                },
-              ),
-            ),
-          ),
+// Apply local filter/sort to what we have
+          final visible = _applyFilterAndSort(vms, _filter, _sort);
 
-          // ---------------------------------------------------------------
-          // Count label
-          // ---------------------------------------------------------------
-          SliverPadding(
-            padding: EdgeInsets.only(top: r.s3),
-            sliver: SliverToBoxAdapter(
-              child: Align(
-                alignment: AlignmentDirectional.centerEnd, // keeps it on the right in RTL
-                child: Padding(
-                  padding: EdgeInsetsDirectional.only(end: r.gutter), // optional small inset
-                  child: Text(
-                    l10n.productsCount(visible.length),
-                    textScaler: TextScaler.linear(r.textScale),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.black.withOpacity(.55),
-                      fontWeight: FontWeight.w600,
+// For empty-state decisions, use what the user actually sees
+          final bool isVisiblyEmpty = visible.isEmpty;
+
+
+          return CustomScrollView(
+            cacheExtent: (r.h * 1.2).clamp(600.0, 1200.0),
+            slivers: [
+              // ---------------------------------------------------------------
+              // Top bar (pinned)
+              // ---------------------------------------------------------------
+              SliverAppBar(
+                pinned: true,
+                elevation: 0,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                toolbarHeight: (r.w * 0.14).clamp(56.0, 68.0),
+                leading: IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: () {
+                    // Real "back" behavior requires that /products was opened with push().
+                    // If it was opened with go() or via deep link, there's nothing to pop.
+                    if (GoRouter.of(context).canPop()) {
+                      context.pop();
+                      return;
+                    }
+                    // Fallback safe route
+                    context.go('/home');
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                centerTitle: true,
+                title: Text(
+                  l10n.productsAllTitle,
+                  textScaler: TextScaler.linear(r.textScale),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                actions: [
+                  IconButton(
+                    tooltip: l10n.productsFilter,
+                    // IMPORTANT: do NOT sync query params here.
+                    // Opening sheet must be a pure UI action to avoid snap-back.
+                    onPressed: () => _openFilterSheet(context),
+                    icon: const Icon(Icons.tune),
+                  ),
+                  IconButton(
+                    tooltip: l10n.productsSort,
+                    onPressed: () => _openSortSheet(context),
+                    icon: const Icon(Icons.swap_vert),
+                  ),
+                  SizedBox(width: r.gutter / 2),
+                ],
+              ),
+
+              // ---------------------------------------------------------------
+              // Filter chips row
+              // ---------------------------------------------------------------
+              SliverPadding(
+                padding: EdgeInsets.only(top: r.s2),
+                sliver: SliverToBoxAdapter(
+                  child: _FilterChipsRow(
+                    selected: _filter,
+                    onSelected: (f) {
+                      if (f == _filter) return;
+                      setState(() => _filter = f);
+                      _syncQueryParams();
+                    },
+                  ),
+                ),
+              ),
+
+              // ---------------------------------------------------------------
+              // Count label / Loading / Error
+              // ---------------------------------------------------------------
+              SliverPadding(
+                padding: EdgeInsets.only(top: r.s3),
+                sliver: SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsetsDirectional.only(end: r.gutter, start: r.gutter),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.productsCount(visible.length),
+                            textScaler: TextScaler.linear(r.textScale),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.black.withOpacity(.55),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                        if (isLoading)
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: const CircularProgressIndicator(strokeWidth: 2),
+                          ),
+
+                        if (!isLoading && (error != null && error.isNotEmpty))
+                          TextButton(
+                            onPressed: () {
+                              // Retry (keeps it simple)
+                              context.read<ProductsBloc>().add(const LoadProducts(limit: 30));
+                            },
+                            child: Text(l10n.retry),
+                          ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
 
-          // ---------------------------------------------------------------
-          // Products grid
-          // ---------------------------------------------------------------
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(r.gutter, r.s3, r.gutter, r.s4),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                mainAxisSpacing: r.s2,
-                crossAxisSpacing: r.s2,
-                childAspectRatio: r.productAspect, // from your responsive tokens
-              ),
-              delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                  final p = visible[index];
-                  final isWish = _wishlisted.contains(p.id);
+              // ---------------------------------------------------------------
+              // Empty state
+              // ---------------------------------------------------------------
+              if (!isLoading && isVisiblyEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(r.gutter),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            (error != null && error.isNotEmpty) ? error : l10n.noResults,
+                            textScaler: TextScaler.linear(r.textScale),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.black.withOpacity(.65),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: r.s3),
+                          SizedBox(
+                            width: (r.w * 0.6).clamp(180.0, 320.0),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                context.read<ProductsBloc>().add(const LoadProducts(limit: 30, forceRefresh: true));
+                              },
+                              child: Text(l10n.retry),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
 
-                  return _ProductTile(
-                    product: p,
-                    enableWishlist: flags.enableWishlist, // white-label
-                    isWishlisted: isWish,
-                    onToggleWishlist: flags.enableWishlist
-                        ? () {
-                      setState(() {
-                        if (isWish) {
-                          _wishlisted.remove(p.id);
-                        } else {
-                          _wishlisted.add(p.id);
-                        }
-                      });
-                    }
-                        : null,
-                    onQuickAdd: () {
-                      // In future: add to cart service + toast
-                      // Keep as a stub for now.
-                    },
-                    onTap: () => context.go('/product/${p.id}'), // deeplink-compatible
-                  );
-                },
-                childCount: visible.length,
-              ),
-            ),
-          ),
-        ],
+              // ---------------------------------------------------------------
+              // Products grid
+              // ---------------------------------------------------------------
+              if (visible.isNotEmpty)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(r.gutter, r.s3, r.gutter, r.s4),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      mainAxisSpacing: r.s2,
+                      crossAxisSpacing: r.s2,
+                      childAspectRatio: r.productAspect,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                        final p = visible[index];
+                        final isWish = _wishlisted.contains(p.id);
+
+                        return _ProductTile(
+                          product: p,
+                          enableWishlist: flags.enableWishlist,
+                          isWishlisted: isWish,
+                          onToggleWishlist: flags.enableWishlist
+                              ? () {
+                            setState(() {
+                              if (isWish) {
+                                _wishlisted.remove(p.id);
+                              } else {
+                                _wishlisted.add(p.id);
+                              }
+                            });
+                          }
+                              : null,
+                          onQuickAdd: () {
+                            // future
+                          },
+                          onTap: () => context.go('/product/${p.id}'),
+                        );
+                      },
+                      childCount: visible.length,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // ✅ State selectors (ADJUST HERE IF YOUR ProductsState USES DIFFERENT FIELDS)
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // ✅ State helpers for your sealed ProductsState
+  // ---------------------------------------------------------------------------
+
+  bool _isLoading(ProductsState state) => state is ProductsLoading;
+
+  String? _errorMessage(ProductsState state) {
+    return switch (state) {
+      ProductsError(:final message) => message,
+      _ => null,
+    };
+  }
+
+  List<sf.Product> _products(ProductsState state) {
+    return switch (state) {
+      ProductsLoaded(:final products) => products,
+      _ => const <sf.Product>[],
+    };
+  }
+
 
   // ---------------------------------------------------------------------------
   // Sheets: Filter & Sort
@@ -309,8 +421,10 @@ class _AllProductsScreenState extends State<AllProductsScreen>
     _syncQueryParams();
   }
 
-  /// Keep URL in sync (deeplink friendly).
-  /// For tabs/shell routes, this still works with GoRouter.
+  /// Sync URL without destroying navigation stack.
+  /// - uses replace(), not go()
+  /// - omits filter when "all"
+  /// - omits sort when "none"
   void _syncQueryParams() {
     final qp = <String, String>{};
 
@@ -320,9 +434,82 @@ class _AllProductsScreenState extends State<AllProductsScreen>
     final s = _sort.toQuery();
     if (s != null) qp['sort'] = s;
 
-    final uri = Uri(path: '/products', queryParameters: qp.isEmpty ? null : qp);
-    context.go(uri.toString());
+    final newUri = Uri(path: '/products', queryParameters: qp.isEmpty ? null : qp);
+    final currentUri = GoRouterState.of(context).uri;
+    if (currentUri.toString() == newUri.toString()) return;
+
+    _lastParsedUri = newUri;
+    context.replace(newUri.toString());
   }
+}
+
+// ============================================================================
+// Shopify -> VM mapper (minimal + safe)
+//
+// This keeps your UI untouched while switching your data source to Shopify models.
+// ============================================================================
+
+_ProductVM _vmFromShopify(sf.Product p) {
+  // ShopifyFlutter Product structure can differ depending on version.
+  // We keep this defensive to avoid crashes.
+  final title = (p.title ?? '').toString();
+
+  // Price:
+  // Many Shopify models have variants with prices; we choose the first.
+  double price = 0;
+  double? compareAt;
+
+  try {
+    final variants = p.productVariants;
+    if (variants != null && variants.isNotEmpty) {
+      final v0 = variants.first;
+
+      // price is often a String, sometimes already num.
+      final rawPrice = v0.price;
+      price = double.tryParse(rawPrice.toString()) ?? 0;
+
+      final rawCompare = v0.compareAtPrice;
+      final parsedCompare = double.tryParse(rawCompare.toString());
+      if (parsedCompare != null && parsedCompare > price) {
+        compareAt = parsedCompare;
+      }
+    }
+  } catch (_) {
+    // ignore and keep defaults
+  }
+
+  // Image:
+  // We keep it simple: use placeholder asset until you wire NetworkImage caching.
+  // If you have a stable placeholder in assets, use it.
+  final imageProvider = const AssetImage('assets/demo/product_sneakers.jpg');
+
+  // "New" heuristic: if product createdAt is recent; if not available just false.
+  bool isNew = false;
+  DateTime createdAt = DateTime(2025, 1, 1);
+
+  try {
+    // Some versions have createdAt as String.
+    final rawCreated = p.createdAt;
+    if (rawCreated != null) {
+      createdAt = DateTime.tryParse(rawCreated.toString()) ?? createdAt;
+      isNew = DateTime.now().difference(createdAt).inDays <= 14;
+    }
+  } catch (_) {}
+
+  // Badge:
+  final badgeText = (compareAt != null) ? 'SALE' : (isNew ? 'NEW' : '');
+
+  return _ProductVM(
+    id: p.id.toString(),
+    title: title.isEmpty ? 'Untitled' : title,
+    price: price,
+    compareAt: compareAt,
+    isNew: isNew,
+    popularityScore: 0, // Shopify doesn't provide directly; keep 0
+    image: imageProvider,
+    badgeText: badgeText.isEmpty ? ' ' : badgeText,
+    createdAt: createdAt,
+  );
 }
 
 // ============================================================================
@@ -332,10 +519,12 @@ class _AllProductsScreenState extends State<AllProductsScreen>
 enum _ProductsFilter { all, sale, newest, popular }
 
 extension _ProductsFilterX on _ProductsFilter {
+  /// IMPORTANT:
+  /// - "all" returns null => omitted from URL, prevents snap-back problems.
   String? toQuery() {
     switch (this) {
       case _ProductsFilter.all:
-        return 'all';
+        return null;
       case _ProductsFilter.sale:
         return 'sale';
       case _ProductsFilter.newest:
@@ -353,7 +542,6 @@ extension _ProductsFilterX on _ProductsFilter {
         return _ProductsFilter.newest;
       case 'popular':
         return _ProductsFilter.popular;
-      case 'all':
       default:
         return _ProductsFilter.all;
     }
@@ -438,7 +626,7 @@ List<_ProductVM> _applyFilterAndSort(
 }
 
 // ============================================================================
-// UI widgets
+// UI widgets (UNCHANGED from your original file)
 // ============================================================================
 
 class _FilterChipsRow extends StatelessWidget {
@@ -454,7 +642,7 @@ class _FilterChipsRow extends StatelessWidget {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: EdgeInsetsDirectional.only(start: r.gutter, end: r.gutter), // small safe inset
+      padding: EdgeInsetsDirectional.only(start: r.gutter, end: r.gutter),
       child: Row(
         children: [
           _Chip(
@@ -571,7 +759,6 @@ class _ProductTile extends StatelessWidget {
                 children: [
                   Image(image: product.image, fit: BoxFit.cover, filterQuality: FilterQuality.medium),
 
-                  // Badge
                   PositionedDirectional(
                     start: r.s3,
                     top: r.s3,
@@ -581,7 +768,6 @@ class _ProductTile extends StatelessWidget {
                     ),
                   ),
 
-                  // Wishlist (optional by feature flag)
                   if (enableWishlist)
                     PositionedDirectional(
                       end: r.s3,
@@ -592,7 +778,6 @@ class _ProductTile extends StatelessWidget {
                       ),
                     ),
 
-                  // Quick add (only show on products that allow it; example: always true)
                   PositionedDirectional(
                     start: r.s3,
                     end: r.s3,
@@ -606,9 +791,7 @@ class _ProductTile extends StatelessWidget {
               ),
             ),
           ),
-
           SizedBox(height: r.s2),
-
           Text(
             product.title,
             maxLines: 1,
@@ -618,9 +801,7 @@ class _ProductTile extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-
           SizedBox(height: r.s1),
-
           Row(
             children: [
               Text(
@@ -679,7 +860,6 @@ class _Badge extends StatelessWidget {
 
 class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({required this.icon, required this.onTap});
-
   final IconData icon;
   final VoidCallback onTap;
 
@@ -702,7 +882,6 @@ class _CircleIconButton extends StatelessWidget {
 
 class _QuickAddButton extends StatelessWidget {
   const _QuickAddButton({required this.label, required this.onTap});
-
   final String label;
   final VoidCallback onTap;
 
@@ -735,7 +914,6 @@ class _QuickAddButton extends StatelessWidget {
 
 class _BottomSheetList extends StatelessWidget {
   const _BottomSheetList({required this.title, required this.children});
-
   final String title;
   final List<Widget> children;
 
@@ -796,9 +974,9 @@ class _SheetOption extends StatelessWidget {
 }
 
 // ============================================================================
-// Demo model (replace with Storefront model later)
-/// Keep this VM minimal and immutable for performance.
-/// Later map from Shopify GraphQL Product -> VM.
+// VM used by your tile (unchanged)
+// ============================================================================
+
 class _ProductVM {
   const _ProductVM({
     required this.id,
@@ -823,95 +1001,100 @@ class _ProductVM {
   final DateTime createdAt;
 }
 
-// Demo list
-final _demoProducts = <_ProductVM>[
+// ---------------------------------------------------------------------------
+// TEMP UI-ONLY FALLBACK (remove once Shopify storefront is wired)
+// ---------------------------------------------------------------------------
+
+
+final List<_ProductVM> _kFakeProducts = <_ProductVM>[
   _ProductVM(
-    id: '1',
+    id: 'demo_1',
     title: 'Classic White Sneakers',
-    price: 129,
-    compareAt: 159,
-    isNew: false,
-    popularityScore: 80,
+    price: 129.00,
+    compareAt: 159.00,
+    isNew: true,
+    popularityScore: 85,
     image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: '-19%',
+    badgeText: 'SALE',
     createdAt: DateTime(2025, 12, 10),
   ),
   _ProductVM(
-    id: '2',
+    id: 'demo_2',
     title: 'Leather Tote Bag',
-    price: 245,
+    price: 245.00,
     compareAt: null,
     isNew: true,
-    popularityScore: 74,
-    image: const AssetImage('assets/demo/product_bag.jpg'),
+    popularityScore: 72,
+    image: const AssetImage('assets/demo/product_sneakers.jpg'),
     badgeText: 'NEW',
     createdAt: DateTime(2025, 12, 20),
   ),
   _ProductVM(
-    id: '3',
+    id: 'demo_3',
     title: 'Luxury Watch',
-    price: 399,
-    compareAt: 479,
+    price: 399.00,
+    compareAt: 479.00,
     isNew: false,
     popularityScore: 90,
-    image: const AssetImage('assets/demo/product_watch.jpg'),
-    badgeText: '-17%',
+    image: const AssetImage('assets/demo/product_sneakers.jpg'),
+    badgeText: 'SALE',
     createdAt: DateTime(2025, 11, 18),
   ),
   _ProductVM(
-    id: '4',
+    id: 'demo_4',
     title: 'Silk Shirt',
-    price: 189,
+    price: 189.00,
     compareAt: null,
     isNew: true,
-    popularityScore: 65,
-    image: const AssetImage('assets/demo/product_shirt.jpg'),
+    popularityScore: 60,
+    image: const AssetImage('assets/demo/product_sneakers.jpg'),
     badgeText: 'NEW',
     createdAt: DateTime(2025, 12, 24),
   ),
   _ProductVM(
-    id: '4',
+    id: 'demo_4',
     title: 'Silk Shirt',
-    price: 189,
+    price: 189.00,
     compareAt: null,
     isNew: true,
-    popularityScore: 65,
-    image: const AssetImage('assets/demo/product_shirt.jpg'),
+    popularityScore: 60,
+    image: const AssetImage('assets/demo/product_sneakers.jpg'),
     badgeText: 'NEW',
     createdAt: DateTime(2025, 12, 24),
   ),
   _ProductVM(
-    id: '4',
+    id: 'demo_4',
     title: 'Silk Shirt',
-    price: 189,
+    price: 189.00,
     compareAt: null,
     isNew: true,
-    popularityScore: 65,
-    image: const AssetImage('assets/demo/product_shirt.jpg'),
+    popularityScore: 60,
+    image: const AssetImage('assets/demo/product_sneakers.jpg'),
     badgeText: 'NEW',
     createdAt: DateTime(2025, 12, 24),
   ),
   _ProductVM(
-    id: '4',
+    id: 'demo_4',
     title: 'Silk Shirt',
-    price: 189,
+    price: 189.00,
     compareAt: null,
     isNew: true,
-    popularityScore: 65,
-    image: const AssetImage('assets/demo/product_shirt.jpg'),
+    popularityScore: 60,
+    image: const AssetImage('assets/demo/product_sneakers.jpg'),
     badgeText: 'NEW',
     createdAt: DateTime(2025, 12, 24),
   ),
   _ProductVM(
-    id: '4',
+    id: 'demo_4',
     title: 'Silk Shirt',
-    price: 189,
+    price: 189.00,
     compareAt: null,
     isNew: true,
-    popularityScore: 65,
-    image: const AssetImage('assets/demo/product_shirt.jpg'),
+    popularityScore: 60,
+    image: const AssetImage('assets/demo/product_sneakers.jpg'),
     badgeText: 'NEW',
     createdAt: DateTime(2025, 12, 24),
   ),
-  // add more as needed
 ];
+// final List<_ProductVM> _kFakeProducts = <_ProductVM>[];
+

@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'core/config/deeplink/merchant_context_service.dart';
 import 'core/config/merchant_config.dart';
 import 'core/di/injection_container.dart';
 import 'core/notifications/push_notifications_service.dart';
@@ -13,19 +14,21 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize with MOCK flag = true
-  await initDependencies(isMock: true);
+  await initDependencies(isMock: true, flavor: AppFlavor.demo);
 
   // Firebase uses the per-merchant swapped config files at build time
   await Firebase.initializeApp();
 
-  final config = sl<MerchantConfig>();
+  final ctx = sl<MerchantContextService>();
 
   // Router + deeplinks (same as real main)
   final appRouter = AppRouter();
-  final deepLinks = DeepLinkService(appRouter.router);
+  final deepLinks = DeepLinkService(appRouter.router, ctx);
   await deepLinks.init();
 
-  if (config.features.enablePushNotifications) {
+  final config = ctx.current;
+
+  if (config != null && config.features.enablePushNotifications) {
     final service = PushNotificationsService(FirebaseMessaging.instance);
 
     await service.init(
@@ -40,7 +43,7 @@ Future<void> main() async {
       },
     );
   } else {
-    debugPrint("ℹ️ Push disabled by feature flag for merchant ${config.merchantId}");
+    debugPrint("ℹ️ Push disabled by feature flag for merchant ${config?.merchantId}");
   }
 
   runApp(RootApp(router: appRouter.router));

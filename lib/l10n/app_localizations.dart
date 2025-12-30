@@ -252,7 +252,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{count} products'**
-  String productsCount(Object count);
+  String productsCount(int count);
 
   /// No description provided for @productsQuickAdd.
   ///
@@ -295,6 +295,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Popular'**
   String get productsSortPopular;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @noResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get noResults;
+
+  /// No description provided for @productColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get productColor;
+
+  /// No description provided for @productSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get productSize;
+
+  /// No description provided for @productQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get productQuantity;
+
+  /// No description provided for @productDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get productDescription;
+
+  /// No description provided for @productAddToCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Cart'**
+  String get productAddToCart;
+
+  /// No description provided for @productSale.
+  ///
+  /// In en, this message translates to:
+  /// **'SALE'**
+  String get productSale;
+
+  /// No description provided for @productAddedToCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {qty} to cart'**
+  String productAddedToCart(int qty);
+
+  /// No description provided for @productAddToCartTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} — {total}'**
+  String productAddToCartTotal(String label, String total);
 }
 
 class _AppLocalizationsDelegate

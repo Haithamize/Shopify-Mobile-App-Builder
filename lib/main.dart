@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shopiney/ui/theme/app_theme.dart';
 
+import 'core/config/deeplink/merchant_context_service.dart';
 import 'core/di/injection_container.dart';
 import 'core/config/merchant_config.dart';
 import 'core/router/app_router.dart';
@@ -15,23 +16,25 @@ import 'core/notifications/push_notifications_service.dart';
 // Standard Entry point (For CI/CD)
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initDependencies(isMock: false); // Use Real Environment
+  await initDependencies(flavor: AppFlavor.demo, isMock: true); // Use Real Environment
 
   // ✅ Firebase uses the per-merchant swapped config files at build time
   await Firebase.initializeApp();
 
-  final config = sl<MerchantConfig>();
+  final ctx = sl<MerchantContextService>();
 
   // ✅ Router + Deep Links
   final appRouter = AppRouter();
-  final deepLinks = DeepLinkService(appRouter.router);
+  final deepLinks = DeepLinkService(appRouter.router, ctx);
   await deepLinks.init();
 
-  debugPrint("🔎 Merchant: ${config.merchantId}");
-  debugPrint("🔎 enablePushNotifications (runtime): ${config.features.enablePushNotifications}");
-  debugPrint("🔎 features json-ish: ${config.features.toString()}");
+  final config = ctx.current;
 
-  if (config.features.enablePushNotifications) {
+  debugPrint("🔎 Merchant: ${config?.merchantId}");
+  debugPrint("🔎 enablePushNotifications (runtime): ${config?.features.enablePushNotifications}");
+  debugPrint("🔎 features json-ish: ${config?.features.toString()}");
+
+  if (config != null && config.features.enablePushNotifications) {
     final service = PushNotificationsService(FirebaseMessaging.instance);
 
     await service.init(
@@ -48,7 +51,7 @@ Future<void> main() async {
       },
     );
   } else {
-    debugPrint("ℹ️ Push disabled by feature flag for merchant ${config.merchantId}");
+    debugPrint("ℹ️ Push disabled by feature flag for merchant ${config?.merchantId}");
   }
 
   runApp(RootApp(router: appRouter.router));
@@ -60,7 +63,13 @@ class RootApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = sl<MerchantConfig>();
+    final config = sl<MerchantContextService>().current;
+
+    if (config == null) {
+      return const MaterialApp(
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
 
     return MaterialApp.router(
       title: config.appName,
@@ -95,7 +104,7 @@ class WhiteLabelApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = sl<MerchantConfig>();
+    final config = sl<MerchantContextService>().current!;
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(

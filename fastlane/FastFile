@@ -1,0 +1,38 @@
+default_platform(:ios)
+
+platform :android do
+  desc "Upload AAB to Google Play Internal testing"
+  lane :internal do
+    aab_path = ENV["AAB_PATH"] || "build/app/outputs/bundle/release/app-release.aab"
+    json_key = ENV["GCLOUD_SERVICE_ACCOUNT_JSON"]
+
+    upload_to_play_store(
+      json_key_data: json_key,
+      aab: aab_path,
+      track: "internal",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end
+
+platform :ios do
+  desc "Upload IPA to TestFlight"
+  lane :testflight do
+    ipa_path = ENV["IPA_PATH"] || "build/ios/ipa/*.ipa"
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_P8"],
+      is_key_content_base64: false
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa_path,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/deeplink/merchant_context_service.dart';
 import '../../../core/config/merchant_config.dart';
 import '../../../core/di/injection_container.dart';
 import '../../../l10n/app_localizations.dart';
@@ -46,7 +47,7 @@ class CollectionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = context.r;
     final l10n = AppLocalizations.of(context)!;
-    final config = sl<MerchantConfig>();
+    final config = sl<MerchantContextService>().current!;
 
     // Responsive columns for grid portion.
     final cols = r.columns(minTileWidth: 190, min: 2, max: 4);

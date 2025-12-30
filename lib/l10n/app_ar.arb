@@ -19,17 +19,51 @@
   "collectionsSubtitle": "اكتشف مجموعاتنا المختارة بعناية",
   "shoes": "احذية",
   "homeItemsCount": "{count} عنصر",
-    "productsAllTitle": "كل المنتجات",
-    "productsFilterAll": "الكل",
-    "productsFilterOnSale": "تخفيضات",
-    "productsFilterNew": "جديد",
-    "productsFilterPopular": "الأكثر شيوعاً",
-    "productsCount": "{count} منتج",
-    "productsQuickAdd": "إضافة سريعة",
-    "productsSort": "ترتيب",
-    "productsFilter": "تصفية",
-    "productsSortPriceLowHigh": "السعر: من الأقل للأعلى",
-    "productsSortPriceHighLow": "السعر: من الأعلى للأقل",
-    "productsSortNewest": "الأحدث",
-    "productsSortPopular": "الأكثر شيوعاً"
+
+  "productsAllTitle": "كل المنتجات",
+  "productsFilterAll": "الكل",
+  "productsFilterOnSale": "تخفيضات",
+  "productsFilterNew": "جديد",
+  "productsFilterPopular": "الأكثر شيوعاً",
+  "productsCount": "{count} منتج",
+  "productsQuickAdd": "إضافة سريعة",
+  "productsSort": "ترتيب",
+  "productsFilter": "تصفية",
+  "productsSortPriceLowHigh": "السعر: من الأقل للأعلى",
+  "productsSortPriceHighLow": "السعر: من الأعلى للأقل",
+  "productsSortNewest": "الأحدث",
+  "productsSortPopular": "الأكثر شيوعاً",
+  "retry": "حاول مرة اخري",
+  "noResults": "لا توجد نتائج",
+
+  "productColor": "اللون",
+  "productSize": "المقاس",
+  "productQuantity": "الكمية",
+  "productDescription": "الوصف",
+  "productAddToCart": "أضف إلى السلة",
+  "productSale": "تخفيض",
+  "productAddedToCart": "تمت إضافة {qty} إلى السلة",
+  "productAddToCartTotal": "{label} — {total}",
+
+  "@homeItemsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "@productsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "@productAddedToCart": {
+    "placeholders": {
+      "qty": { "type": "int" }
+    }
+  },
+  "@productAddToCartTotal": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "total": { "type": "String" }
+    }
+  }
 }
