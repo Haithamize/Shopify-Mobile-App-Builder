@@ -28,7 +28,9 @@ workflows:
 
       - name: 🤖 Build Android APK (release)
         script: |
-          flutter build apk --release
+          flutter build apk --release \
+            --dart-define=APP_NAME="$APP_NAME" \
+            --dart-define=MERCHANT_ID="$MERCHANT_ID"
 
       - name: 🍎 Build iOS (simulator debug, no signing)
         script: |
@@ -37,7 +39,9 @@ workflows:
           pod repo update || true
           pod install
           cd ..
-          flutter build ios --debug --simulator
+          flutter build ios --debug --simulator \
+            --dart-define=APP_NAME="$APP_NAME" \
+            --dart-define=MERCHANT_ID="$MERCHANT_ID"
 
       - name: 📦 Package iOS simulator app as artifact
         script: |
@@ -95,7 +99,10 @@ workflows:
 
       - name: 🤖 Build Android APK (release)
         script: |
-          flutter build apk --release
+          flutter build apk --release \
+            --dart-define=APP_NAME="$APP_NAME" \
+            --dart-define=MERCHANT_ID="$MERCHANT_ID"
+          
 
       - name: 🍎 Build iOS (simulator debug, no signing)
         script: |
@@ -104,7 +111,9 @@ workflows:
           pod repo update || true
           pod install
           cd ..
-          flutter build ios --debug --simulator
+          flutter build ios --debug --simulator \
+            --dart-define=APP_NAME="$APP_NAME" \
+            --dart-define=MERCHANT_ID="$MERCHANT_ID"
 
       - name: 📦 Package iOS simulator app as artifact
         script: |
