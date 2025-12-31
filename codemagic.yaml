@@ -39,6 +39,33 @@ workflows:
           cd ..
           flutter build ios --debug --simulator
 
+      - name: 📦 Package iOS simulator app as artifact
+        script: |
+          set -e
+          mkdir -p build_artifacts
+          APP_PATH="build/ios/iphonesimulator/Runner.app"
+          if [ -d "$APP_PATH" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build_artifacts/Runner-simulator.app.zip"
+            echo "✅ Packaged iOS simulator app: build_artifacts/Runner-simulator.app.zip"
+          else
+            echo "❌ Runner.app not found at $APP_PATH"
+            find build/ios -maxdepth 6 -type d -name "Runner.app" -print || true
+            exit 1
+          fi
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build_artifacts/*.zip
+      - hydration_verification.txt
+
+    publishing:
+      email:
+        recipients:
+          - h.hysam@yahoo.com
+        notify:
+          success: true
+          failure: true
+
   dedicated_build:
     name: Dedicated merchant build (hydration + APK + iOS simulator)
     max_build_duration: 90
@@ -78,3 +105,30 @@ workflows:
           pod install
           cd ..
           flutter build ios --debug --simulator
+
+      - name: 📦 Package iOS simulator app as artifact
+        script: |
+          set -e
+          mkdir -p build_artifacts
+          APP_PATH="build/ios/iphonesimulator/Runner.app"
+          if [ -d "$APP_PATH" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build_artifacts/Runner-simulator.app.zip"
+            echo "✅ Packaged iOS simulator app: build_artifacts/Runner-simulator.app.zip"
+          else
+            echo "❌ Runner.app not found at $APP_PATH"
+            find build/ios -maxdepth 6 -type d -name "Runner.app" -print || true
+            exit 1
+          fi
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build_artifacts/*.zip
+      - hydration_verification.txt
+
+    publishing:
+      email:
+        recipients:
+          - h.hysam@yahoo.com
+        notify:
+          success: true
+          failure: true
