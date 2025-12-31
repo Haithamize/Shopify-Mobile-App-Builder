@@ -5,7 +5,7 @@ workflows:
     environment:
       flutter: stable
       groups:
-        - Demo Free App Flow
+        - Demo Free App Variables
 
     scripts:
       - name: ✅ Validate required vars (fail fast)
