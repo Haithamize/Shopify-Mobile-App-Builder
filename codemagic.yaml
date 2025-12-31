@@ -4,11 +4,8 @@ workflows:
     max_build_duration: 90
     environment:
       flutter: stable
-
-      # Set these in Codemagic UI for THIS workflow:
-      # MERCHANT_ID=demo_default
-      # PACKAGE_NAME=com.shopifyme
-      # APP_NAME=Free Demo App
+      groups:
+        - Demo Free App Flow
 
     scripts:
       - name: ✅ Validate required vars (fail fast)
@@ -18,96 +15,37 @@ workflows:
           [ -n "${PACKAGE_NAME:-}" ] || (echo "❌ PACKAGE_NAME is empty" && exit 1)
           [ -n "${APP_NAME:-}" ] || (echo "❌ APP_NAME is empty" && exit 1)
 
-      - name: 📦 Flutter pub get
-        script: |
-          set -e
-          flutter --version
-          flutter pub get
-
       - name: 🔎 Show CI variables
         script: |
-          set -e
           echo "MERCHANT_ID=$MERCHANT_ID"
           echo "PACKAGE_NAME=$PACKAGE_NAME"
           echo "APP_NAME=$APP_NAME"
 
-      - name: 🔎 strings.xml BEFORE hydration
-        script: |
-          set -e
-          echo "---- BEFORE strings.xml ----"
-          cat android/app/src/main/res/values/strings.xml || true
-          echo "----------------------------"
-
       - name: 🧩 Hydrate (demo)
         script: |
-          set -e
           chmod +x ./hydrate_merchant.sh
           ./hydrate_merchant.sh "$MERCHANT_ID" "$PACKAGE_NAME" "$APP_NAME"
 
-      - name: 🔎 Verify strings.xml AFTER hydration (must match APP_NAME)
+      - name: 🤖 Build Android APK (release)
         script: |
-          set -e
-          echo "---- AFTER strings.xml ----"
-          cat android/app/src/main/res/values/strings.xml || true
-          echo "---------------------------"
-          grep -q "<string name=\"app_name\">$APP_NAME</string>" android/app/src/main/res/values/strings.xml \
-            && echo "✅ app_name matches APP_NAME" \
-            || (echo "❌ app_name did NOT match APP_NAME" && exit 1)
+          flutter build apk --release
 
-      - name: 🤖 Build Android APK (debug)
+      - name: 🍎 Build iOS (simulator debug, no signing)
         script: |
-          set -e
-          flutter build apk --debug
-
-      - name: 🍎 Install iOS pods (clean) + Build iOS (simulator debug, no signing)
-        script: |
-          set -e
-          flutter pub get
           cd ios
           rm -rf Pods Podfile.lock
           pod repo update || true
           pod install
           cd ..
           flutter build ios --debug --simulator
-
-      - name: 📦 Package iOS simulator app as artifact
-        script: |
-          set -e
-          mkdir -p build_artifacts
-          APP_PATH="build/ios/iphonesimulator/Runner.app"
-          if [ -d "$APP_PATH" ]; then
-            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build_artifacts/Runner-simulator.app.zip"
-            echo "✅ Packaged iOS simulator app: build_artifacts/Runner-simulator.app.zip"
-          else
-            echo "❌ Runner.app not found at $APP_PATH"
-            echo "Searching for Runner.app under build/ios..."
-            find build/ios -maxdepth 6 -type d -name "Runner.app" -print || true
-            exit 1
-          fi
-
-    artifacts:
-      - build/app/outputs/flutter-apk/app-debug.apk
-      - build_artifacts/*.zip
-      - hydration_verification.txt
-
-    publishing:
-      email:
-        recipients:
-          - h.hysam@yahoo.com
-        notify:
-          success: true
-          failure: true
 
   dedicated_build:
     name: Dedicated merchant build (hydration + APK + iOS simulator)
     max_build_duration: 90
     environment:
       flutter: stable
-
-      # Set these in Codemagic UI for THIS workflow:
-      # MERCHANT_ID=merchant_001
-      # PACKAGE_NAME=com.burger.kings
-      # APP_NAME=Burger King App
+      groups:
+        - Dedicated Merchant Paid Apps
 
     scripts:
       - name: ✅ Validate required vars (fail fast)
@@ -117,82 +55,26 @@ workflows:
           [ -n "${PACKAGE_NAME:-}" ] || (echo "❌ PACKAGE_NAME is empty" && exit 1)
           [ -n "${APP_NAME:-}" ] || (echo "❌ APP_NAME is empty" && exit 1)
 
-      - name: 📦 Flutter pub get
-        script: |
-          set -e
-          flutter --version
-          flutter pub get
-
       - name: 🔎 Show CI variables
         script: |
-          set -e
           echo "MERCHANT_ID=$MERCHANT_ID"
           echo "PACKAGE_NAME=$PACKAGE_NAME"
           echo "APP_NAME=$APP_NAME"
 
-      - name: 🔎 strings.xml BEFORE hydration
-        script: |
-          set -e
-          echo "---- BEFORE strings.xml ----"
-          cat android/app/src/main/res/values/strings.xml || true
-          echo "----------------------------"
-
       - name: 🧩 Hydrate (dedicated)
         script: |
-          set -e
           chmod +x ./hydrate_merchant.sh
           ./hydrate_merchant.sh "$MERCHANT_ID" "$PACKAGE_NAME" "$APP_NAME"
 
-      - name: 🔎 Verify strings.xml AFTER hydration (must match APP_NAME)
+      - name: 🤖 Build Android APK (release)
         script: |
-          set -e
-          echo "---- AFTER strings.xml ----"
-          cat android/app/src/main/res/values/strings.xml || true
-          echo "---------------------------"
-          grep -q "<string name=\"app_name\">$APP_NAME</string>" android/app/src/main/res/values/strings.xml \
-            && echo "✅ app_name matches APP_NAME" \
-            || (echo "❌ app_name did NOT match APP_NAME" && exit 1)
+          flutter build apk --release
 
-      - name: 🤖 Build Android APK (debug)
+      - name: 🍎 Build iOS (simulator debug, no signing)
         script: |
-          set -e
-          flutter build apk --debug
-
-      - name: 🍎 Install iOS pods (clean) + Build iOS (simulator debug, no signing)
-        script: |
-          set -e
-          flutter pub get
           cd ios
           rm -rf Pods Podfile.lock
           pod repo update || true
           pod install
           cd ..
           flutter build ios --debug --simulator
-
-      - name: 📦 Package iOS simulator app as artifact
-        script: |
-          set -e
-          mkdir -p build_artifacts
-          APP_PATH="build/ios/iphonesimulator/Runner.app"
-          if [ -d "$APP_PATH" ]; then
-            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build_artifacts/Runner-simulator.app.zip"
-            echo "✅ Packaged iOS simulator app: build_artifacts/Runner-simulator.app.zip"
-          else
-            echo "❌ Runner.app not found at $APP_PATH"
-            echo "Searching for Runner.app under build/ios..."
-            find build/ios -maxdepth 6 -type d -name "Runner.app" -print || true
-            exit 1
-          fi
-
-    artifacts:
-      - build/app/outputs/flutter-apk/app-debug.apk
-      - build_artifacts/*.zip
-      - hydration_verification.txt
-
-    publishing:
-      email:
-        recipients:
-          - h.hysam@yahoo.com
-        notify:
-          success: true
-          failure: true
