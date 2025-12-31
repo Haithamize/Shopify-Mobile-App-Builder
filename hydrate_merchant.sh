@@ -359,13 +359,26 @@ else
 fi
 
 # --- CLEAN AND REBUILD ---
-echo "🧹 Cleaning and rebuilding..."
-cd "$PROJECT_ROOT"
-flutter clean > /dev/null 2>&1
-cd "$PROJECT_ROOT/android"
-./gradlew clean > /dev/null 2>&1
-cd "$PROJECT_ROOT"
-flutter pub get > /dev/null 2>&1
+#echo "🧹 Cleaning and rebuilding..."
+#cd "$PROJECT_ROOT"
+#flutter clean > /dev/null 2>&1
+#cd "$PROJECT_ROOT/android"
+#./gradlew clean > /dev/null 2>&1
+#cd "$PROJECT_ROOT"
+#flutter pub get > /dev/null 2>&1
+
+# --- CLEAN AND REBUILD (OPTIONAL) ---Add env var (in all groups in codemagic): SKIP_CLEAN = 1 to avoid the following error :
+#Script failed ... at line 366: ./gradlew clean > /dev/null 2>&1 when running the cicd
+log "🧹 Clean step (optional)..."
+
+if [ "${SKIP_CLEAN:-0}" = "1" ]; then
+  warn "Skipping clean because SKIP_CLEAN=1"
+else
+  flutter clean
+  (cd "$PROJECT_ROOT/android" && ./gradlew clean)
+  flutter pub get
+fi
+
 
 # --- VERIFICATION ---
 echo "✅ Hydration Complete!"
