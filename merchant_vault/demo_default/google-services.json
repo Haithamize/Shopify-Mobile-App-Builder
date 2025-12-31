@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "582429979854",
+    "project_id": "shopifyme-16945",
+    "storage_bucket": "shopifyme-16945.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:582429979854:android:90fdd40368fd5a82fb4c9f",
+        "android_client_info": {
+          "package_name": "com.shopifyme"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKlSbv0HMXnpcwBZSIN7VlkH6z1zPEY4Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
