@@ -57,4 +57,21 @@ class ShopifyFlutterFacade implements ShopifyFacade {
       );
     }
   }
+
+  @override
+  Future<sf.Product> fetchProductById(String productId) async {
+    try {
+      final all = await _store.getAllProducts();
+      final list = all ?? const <sf.Product>[];
+
+      final match = list.firstWhere(
+            (p) => p.id.toString() == productId,
+        orElse: () => throw Exception('Product not found: $productId'),
+      );
+
+      return match;
+    } catch (e) {
+      throw Exception('Failed to load product details: $e');
+    }
+  }
 }

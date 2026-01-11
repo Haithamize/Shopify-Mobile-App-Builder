@@ -1,6 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../domain/repositories/products_repository.dart';
-import 'products_event.dart';
+import 'package:shopiney/features/catalogue/bloc/product/products_event.dart';
+import '../../domain/repositories/products_repository.dart';
 import 'products_state.dart';
 
 class ProductsBloc extends Bloc<ProductsEvent, ProductsState> {
@@ -19,6 +20,7 @@ class ProductsBloc extends Bloc<ProductsEvent, ProductsState> {
       );
       emit(ProductsLoaded(items));
     } catch (e) {
+      debugPrint('❌ ProductsBloc LoadProducts failed: $e');
       emit(ProductsError(e.toString()));
     }
   }

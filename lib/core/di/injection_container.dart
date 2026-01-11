@@ -3,10 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shopify_flutter/shopify/src/shopify_store.dart';
 
-import '../../features/catalogue/bloc/products_bloc.dart';
+import '../../features/catalogue/bloc/cart/cart_bloc.dart';
+import '../../features/catalogue/bloc/product/products_bloc.dart';
+import '../../features/catalogue/domain/repositories/cart_repository.dart';
 import '../../features/catalogue/domain/repositories/products_repository.dart';
 import '../config/config_loader.dart';
 import '../config/deeplink/merchant_context_service.dart';
+import '../data/cart/cart_storage.dart';
 import '../data/db/app_database.dart';
 import '../network/network_info.dart';
 import '../shopify/shopify_facade.dart';
@@ -56,6 +59,7 @@ Future<void> initDependencies({
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfo(Connectivity()));
   sl.registerLazySingleton<ShopifyFacade>(() => ShopifyFlutterFacade());
+  sl.registerLazySingleton<CartStorage>(() => CartStorage());
 
   // ✅ QUICK LOG-ONLY VERIFICATION (no screen)
   try {
@@ -83,4 +87,14 @@ Future<void> initDependencies({
   ));
 
   sl.registerFactory<ProductsBloc>(() => ProductsBloc(sl<ProductsRepository>()));
+
+
+  // 6) Cart/Bloc
+  sl.registerLazySingleton<CartRepository>(() => CartRepository(
+    merchantId: sl<MerchantContextService>().merchantId ?? 'unknown',
+    storage: sl<CartStorage>(),
+  ));
+
+  // Singleton so cart state persists across tabs/routes
+  sl.registerLazySingleton<CartBloc>(() => CartBloc(sl<CartRepository>()));
 }

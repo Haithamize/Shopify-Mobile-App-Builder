@@ -10,6 +10,7 @@ abstract class ShopifyFacade {
     String? cursor,
   });
   Future<ShopifyHealthResult> healthCheck();
+  Future<sf.Product> fetchProductById(String productId);
 }
 
 /// Small DTO returned by the facade.

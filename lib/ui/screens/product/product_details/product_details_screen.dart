@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shopify_flutter/shopify_flutter.dart' as sf;
 
-import '../../../../core/config/merchant_config.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../features/catalogue/bloc/cart/cart_bloc.dart';
+import '../../../../features/catalogue/bloc/cart/cart_event.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../utility/utility.dart';
 import '../../../layout/responsive.dart';
+import '../../../../core/shopify/shopify_facade.dart';
+
 
 class ProductDetailsScreen extends StatefulWidget {
-  const ProductDetailsScreen({super.key, required this.productId});
+  const ProductDetailsScreen({
+    super.key,
+    required this.productId,
+    this.product,
+  });
+
   final String productId;
+  final sf.Product? product;
 
   @override
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
 }
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
-  late final _ProductDetailsVM product = _demoProductById(widget.productId);
+  late Future<_ProductDetailsVM> _future;
 
   int _imageIndex = 0;
   bool _wishlisted = false;
@@ -24,6 +36,26 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   String _selectedColor = 'White';
   String _selectedSize = 'US 9';
   int _qty = 1;
+  bool _didInitSelections = false;
+
+  Future<_ProductDetailsVM> _loadProduct() async {
+    // ✅ If we navigated from cart/list, we already have it
+    final provided = widget.product;
+    if (provided != null) {
+      return _detailsVmFromShopify(provided);
+    }
+
+    // ✅ Deep link fallback
+    final sfProduct =
+    await sl<ShopifyFacade>().fetchProductById(widget.productId);
+    return _detailsVmFromShopify(sfProduct);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadProduct();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,205 +63,246 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
 
-    final total = product.price * _qty;
-    final totalText = '\$${total.toStringAsFixed(2)}';
-
-    final addToCartText = l10n.productAddToCartTotal(
-      l10n.productAddToCart,
-      totalText,
-    );
-
-    // Smaller heights so UI doesn’t feel huge
-    final expandedH = (r.h * 0.42).clamp(240.0, 420.0);
-    final collapsedH = (r.h * 0.16).clamp(110.0, 140.0); // leaves mini image visible
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(r.gutter, r.s2, r.gutter, r.s2),
-          child: _AddToCartButton(
-            text: addToCartText,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.productAddedToCart(_qty))),
-              );
-            },
-            height: (r.w * 0.13).clamp(48.0, 56.0),
-          ),
-        ),
-      ),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            stretch: true,
-            elevation: 0,
+    return FutureBuilder<_ProductDetailsVM>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
             backgroundColor: theme.scaffoldBackgroundColor,
-            collapsedHeight: collapsedH,
-            leading: IconButton(
-              onPressed: () {
-                if (GoRouter.of(context).canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/products');
-                }
-              },
-              icon: const Icon(Icons.arrow_back),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: theme.scaffoldBackgroundColor,
+            body: Center(
+              child: Padding(
+                padding: EdgeInsets.all(r.gutter),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Failed to load product:\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: r.s3),
+                    ElevatedButton(
+                      onPressed: () => setState(() {
+                        _didInitSelections = false;
+                        _future = _loadProduct(); // ✅ actually retries
+                      }),
+                      child: Text(l10n.retry),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            actions: [
-              _CircleAction(
-                icon: _wishlisted ? Icons.favorite : Icons.favorite_border,
-                onTap: () => setState(() => _wishlisted = !_wishlisted),
-              ),
-              SizedBox(width: r.s2),
-              _CircleAction(
-                icon: Icons.share,
-                onTap: () async {
-                  final link = _buildDeepLink(productId: widget.productId);
-                  await Share.share(link);
+          );
+        }
+
+        final product = snapshot.data!;
+        // ✅ DON'T reset selections on every rebuild.
+        // Do it once after product is loaded.
+        if (!_didInitSelections) {
+          _selectedColor =
+          product.colors.isNotEmpty ? product.colors.first.name : _selectedColor;
+          _selectedSize =
+          product.sizes.isNotEmpty ? product.sizes.first : _selectedSize;
+          _didInitSelections = true;
+        }
+
+        final total = product.price * _qty;
+        final totalText = '\$${total.toStringAsFixed(2)}';
+        final addToCartText = l10n.productAddToCartTotal(l10n.productAddToCart, totalText);
+
+        final expandedH = (r.h * 0.42).clamp(240.0, 420.0);
+        final collapsedH = (r.h * 0.16).clamp(110.0, 140.0);
+
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          bottomNavigationBar: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(r.gutter, r.s2, r.gutter, r.s2),
+              child: _AddToCartButton(
+                text: addToCartText,
+                onTap: () {
+                  final variantId = _resolveVariantId(
+                    product.raw,
+                    selectedColor: _selectedColor,
+                    selectedSize: _selectedSize,
+                  );
+
+                  context.read<CartBloc>().add(
+                    CartAddVariant(variantId: variantId, quantity: _qty),
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.productAddedToCart(_qty))),
+                  );
+
+                  context.go('/cart');
                 },
+                height: (r.w * 0.13).clamp(48.0, 56.0),
               ),
-              SizedBox(width: r.gutter),
-            ],
-            expandedHeight: expandedH,
-            flexibleSpace: LayoutBuilder(
-              builder: (context, constraints) {
-                final maxH = expandedH;
-                final minH = collapsedH;
-                final currentH = constraints.maxHeight;
-
-                // collapseT: 0 => expanded, 1 => collapsed
-                final collapseT = ((maxH - currentH) / (maxH - minH)).clamp(0.0, 1.0);
-
-                return FlexibleSpaceBar(
-                  background: _HeaderImages(
-                    images: product.images,
-                    index: _imageIndex,
-                    onIndexChanged: (i) => setState(() => _imageIndex = i),
-                    collapseT: collapseT,
-                    showSale: product.compareAt != null && product.compareAt! > product.price,
-                    saleText: l10n.productSale,
-                  ),
-                );
-              },
             ),
           ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(r.gutter, r.s3, r.gutter, r.s4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.title,
-                    textScaler: TextScaler.linear(r.textScale),
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                stretch: true,
+                elevation: 0,
+                backgroundColor: theme.scaffoldBackgroundColor,
+                collapsedHeight: collapsedH,
+                leading: IconButton(
+                  onPressed: () {
+                    if (GoRouter.of(context).canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/products');
+                    }
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                actions: [
+                  _CircleAction(
+                    icon: _wishlisted ? Icons.favorite : Icons.favorite_border,
+                    onTap: () => setState(() => _wishlisted = !_wishlisted),
                   ),
-                  SizedBox(height: r.s2),
+                  SizedBox(width: r.s2),
+                  _CircleAction(
+                    icon: Icons.share,
+                    onTap: () async {
+                      final link = _buildDeepLink(productId: widget.productId);
+                      await Share.share(link);
+                    },
+                  ),
+                  SizedBox(width: r.gutter),
+                ],
+                expandedHeight: expandedH,
+                flexibleSpace: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxH = expandedH;
+                    final minH = collapsedH;
+                    final currentH = constraints.maxHeight;
+                    final collapseT = ((maxH - currentH) / (maxH - minH)).clamp(0.0, 1.0);
 
-                  Row(
+                    return FlexibleSpaceBar(
+                      background: _HeaderImages(
+                        images: product.images.isEmpty
+                            ? const [AssetImage('assets/demo/product_sneakers.jpg')]
+                            : product.images,
+                        index: _imageIndex.clamp(0, (product.images.length - 1).clamp(0, 999)),
+                        onIndexChanged: (i) => setState(() => _imageIndex = i),
+                        collapseT: collapseT,
+                        showSale: product.compareAt != null && product.compareAt! > product.price,
+                        saleText: l10n.productSale,
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(r.gutter, r.s3, r.gutter, r.s4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '\$${product.price.toStringAsFixed(0)}',
+                        product.title,
                         textScaler: TextScaler.linear(r.textScale),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFFD1493F),
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      SizedBox(height: r.s2),
+
+                      Row(
+                        children: [
+                          Text(
+                            '\$${product.price.toStringAsFixed(0)}',
+                            textScaler: TextScaler.linear(r.textScale),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: const Color(0xFFD1493F),
+                            ),
+                          ),
+                          SizedBox(width: r.s2),
+                          if (product.compareAt != null && product.compareAt! > product.price)
+                            Text(
+                              '\$${product.compareAt!.toStringAsFixed(0)}',
+                              textScaler: TextScaler.linear(r.textScale),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: Colors.black.withOpacity(.45),
+                                decoration: TextDecoration.lineThrough,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      SizedBox(height: r.s4),
+
+                      _TitleRow(left: l10n.productColor, right: _selectedColor),
+                      SizedBox(height: r.s2),
+                      _ColorDots(
+                        colors: product.colors,
+                        selectedName: _selectedColor,
+                        onSelected: (name) => setState(() => _selectedColor = name),
+                      ),
+
+                      SizedBox(height: r.s4),
+
+                      _TitleRow(left: l10n.productSize, right: _selectedSize),
+                      SizedBox(height: r.s2),
+                      _SizeChips(
+                        sizes: product.sizes,
+                        selected: _selectedSize,
+                        onSelected: (s) => setState(() => _selectedSize = s),
+                      ),
+
+                      SizedBox(height: r.s4),
+
+                      Text(
+                        l10n.productQuantity,
+                        textScaler: TextScaler.linear(r.textScale),
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      SizedBox(height: r.s2),
+                      _QtyStepper(
+                        value: _qty,
+                        onMinus: _qty > 1 ? () => setState(() => _qty--) : null,
+                        onPlus: () => setState(() => _qty++),
+                      ),
+
+                      SizedBox(height: r.s4),
+
+                      Text(
+                        l10n.productDescription,
+                        textScaler: TextScaler.linear(r.textScale),
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      SizedBox(height: r.s2),
+                      Text(
+                        product.description,
+                        textScaler: TextScaler.linear(r.textScale),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          height: 1.45,
+                          color: Colors.black.withOpacity(.6),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SizedBox(width: r.s2),
-                      if (product.compareAt != null && product.compareAt! > product.price)
-                        Text(
-                          '\$${product.compareAt!.toStringAsFixed(0)}',
-                          textScaler: TextScaler.linear(r.textScale),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.black.withOpacity(.45),
-                            decoration: TextDecoration.lineThrough,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+
+                      SizedBox(height: r.s5),
                     ],
                   ),
-
-                  SizedBox(height: r.s4),
-
-                  // Color
-                  _TitleRow(
-                    left: l10n.productColor,
-                    right: _selectedColor,
-                  ),
-                  SizedBox(height: r.s2),
-                  _ColorDots(
-                    colors: product.colors,
-                    selectedName: _selectedColor,
-                    onSelected: (name) => setState(() => _selectedColor = name),
-                  ),
-
-                  SizedBox(height: r.s4),
-
-                  // Size
-                  _TitleRow(
-                    left: l10n.productSize,
-                    right: _selectedSize,
-                  ),
-                  SizedBox(height: r.s2),
-                  _SizeChips(
-                    sizes: product.sizes,
-                    selected: _selectedSize,
-                    onSelected: (s) => setState(() => _selectedSize = s),
-                  ),
-
-                  SizedBox(height: r.s4),
-
-                  // Quantity
-                  Text(
-                    l10n.productQuantity,
-                    textScaler: TextScaler.linear(r.textScale),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  SizedBox(height: r.s2),
-                  _QtyStepper(
-                    value: _qty,
-                    onMinus: _qty > 1 ? () => setState(() => _qty--) : null,
-                    onPlus: () => setState(() => _qty++),
-                  ),
-
-                  SizedBox(height: r.s4),
-
-                  // Description
-                  Text(
-                    l10n.productDescription,
-                    textScaler: TextScaler.linear(r.textScale),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  SizedBox(height: r.s2),
-                  Text(
-                    product.description,
-                    textScaler: TextScaler.linear(r.textScale),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      height: 1.45,
-                      color: Colors.black.withOpacity(.6),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.start,
-                  ),
-
-                  SizedBox(height: r.s5),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -239,7 +312,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final scheme = Uri(
       scheme: 'shopifyme',
       host: 'product',
-      path: '/$productId',
+      path: '/${Uri.encodeComponent(productId)}',
     ).toString();
 
     // Optional: only include universal link if you actually have app/universal links domain configured.
@@ -675,6 +748,7 @@ class _AddToCartButton extends StatelessWidget {
 // --------------------------- TEMP demo data ---------------------------
 
 class _ProductDetailsVM {
+  final sf.Product raw;
   final String id;
   final String title;
   final double price;
@@ -685,6 +759,7 @@ class _ProductDetailsVM {
   final List<String> sizes;
 
   const _ProductDetailsVM({
+    required this.raw,
     required this.id,
     required this.title,
     required this.price,
@@ -702,23 +777,192 @@ class _ColorOption {
   const _ColorOption(this.name, this.color);
 }
 
-_ProductDetailsVM _demoProductById(String id) {
-  const img = AssetImage('assets/demo/product_sneakers.jpg');
+_ProductDetailsVM _detailsVmFromShopify(sf.Product p) {
+  final title = (p.title ?? '').toString().trim();
+  final safeTitle = title.isEmpty ? 'Untitled' : title;
+
+  // descriptionHtml sometimes exists; keep it simple as plain string
+  final desc = (p.description ?? '').toString().trim();
+  final safeDesc = desc.isEmpty ? 'No description.' : desc;
+
+  // price/compareAt from first variant
+  double price = 0;
+  double? compareAt;
+  try {
+    final variants = (p.productVariants ?? const []);
+    if (variants.isNotEmpty) {
+      final v0 = variants.first;
+      price = moneyToDouble(v0.price);
+      final c = moneyToDouble(v0.compareAtPrice);
+      if (c > price) compareAt = c;
+    }
+  } catch (_) {}
+
+  // images
+  final urls = _tryGetAllImageUrls(p);
+  final images = urls.isNotEmpty
+      ? urls.map((u) => NetworkImage(u) as ImageProvider).toList(growable: false)
+      : const <ImageProvider>[AssetImage('assets/demo/product_sneakers.jpg')];
+
+  // options -> colors & sizes (best-effort)
+  final options = _tryGetOptions(p);
+
+  final colors = _extractOptionValues(options, keys: const ['color', 'colour'])
+      .map((name) => _ColorOption(name, _colorFromName(name)))
+      .toList(growable: false);
+
+  final sizes = _extractOptionValues(options, keys: const ['size'])
+      .toList(growable: false);
+
+  // safe fallbacks so your UI doesn't break
+  final safeColors = colors.isNotEmpty ? colors : const <_ColorOption>[
+    _ColorOption('Default', Color(0xFFF4F4F4)),
+  ];
+  final safeSizes = sizes.isNotEmpty ? sizes : const <String>['Default'];
 
   return _ProductDetailsVM(
-    id: id,
-    title: 'Classic White Sneakers',
-    price: 129,
-    compareAt: 159,
-    description:
-    'Premium leather sneakers with a minimalist design. Features a cushioned insole for all-day comfort.',
-    images: const [img, img, img],
-    colors: const [
-      _ColorOption('White', Color(0xFFF4F4F4)),
-      _ColorOption('Black', Color(0xFF0E1525)),
-      _ColorOption('Gray', Color(0xFF9AA3AF)),
-      _ColorOption('Blue', Color(0xFF213A8F)),
-    ],
-    sizes: const ['US 7', 'US 8', 'US 9', 'US 10', 'US 11'],
+    raw: p,
+    id: p.id.toString(),
+    title: safeTitle,
+    price: price,
+    compareAt: compareAt,
+    description: safeDesc,
+    images: images,
+    colors: safeColors,
+    sizes: safeSizes,
   );
 }
+
+List<String> _tryGetAllImageUrls(sf.Product p) {
+  try {
+    final d = p as dynamic;
+
+    final images = d.images;
+    if (images != null && images.isNotEmpty) {
+      return List<String>.from(
+        images.map((img) => (img.originalSrc ?? img.src ?? img.url).toString()),
+      ).where((e) => e.isNotEmpty).toList();
+    }
+
+    // sometimes single image
+    final img = d.image;
+    if (img != null) {
+      final url = (img.originalSrc ?? img.src ?? img.url)?.toString() ?? '';
+      if (url.isNotEmpty) return [url];
+    }
+  } catch (_) {}
+
+  return const <String>[];
+}
+
+/// Returns a list of maps like: [{name: "Color", values: ["Red","Blue"]}, ...]
+List<Map<String, dynamic>> _tryGetOptions(sf.Product p) {
+  try {
+    final d = p as dynamic;
+    final opts = d.options;
+    if (opts != null && opts.isNotEmpty) {
+      return List<Map<String, dynamic>>.from(
+        opts.map((o) => {
+          'name': (o.name ?? '').toString(),
+          'values': (o.values ?? const []).map((v) => v.toString()).toList(),
+        }),
+      );
+    }
+  } catch (_) {}
+
+  return const <Map<String, dynamic>>[];
+}
+
+Iterable<String> _extractOptionValues(
+    List<Map<String, dynamic>> options, {
+      required List<String> keys,
+    }) sync* {
+  for (final o in options) {
+    final name = (o['name'] ?? '').toString().toLowerCase();
+    if (keys.any((k) => name.contains(k))) {
+      final values = o['values'];
+      if (values is List) {
+        for (final v in values) {
+          final s = v.toString().trim();
+          if (s.isNotEmpty) yield s;
+        }
+      }
+    }
+  }
+}
+
+/// Simple color guesser (good enough for UI dots)
+Color _colorFromName(String name) {
+  final n = name.toLowerCase();
+  if (n.contains('black')) return const Color(0xFF0E1525);
+  if (n.contains('white')) return const Color(0xFFF4F4F4);
+  if (n.contains('gray') || n.contains('grey')) return const Color(0xFF9AA3AF);
+  if (n.contains('blue')) return const Color(0xFF213A8F);
+  if (n.contains('green')) return const Color(0xFF2F4B3A);
+  if (n.contains('red')) return const Color(0xFFD1493F);
+  if (n.contains('brown')) return const Color(0xFF7B4F2A);
+  return const Color(0xFFCCCCCC);
+}
+
+
+// _ProductDetailsVM _demoProductById(String id) {
+//   const img = AssetImage('assets/demo/product_sneakers.jpg');
+//
+//   return _ProductDetailsVM(
+//     id: id,
+//     title: 'Classic White Sneakers',
+//     price: 129,
+//     compareAt: 159,
+//     description:
+//     'Premium leather sneakers with a minimalist design. Features a cushioned insole for all-day comfort.',
+//     images: const [img, img, img],
+//     colors: const [
+//       _ColorOption('White', Color(0xFFF4F4F4)),
+//       _ColorOption('Black', Color(0xFF0E1525)),
+//       _ColorOption('Gray', Color(0xFF9AA3AF)),
+//       _ColorOption('Blue', Color(0xFF213A8F)),
+//     ],
+//     sizes: const ['US 7', 'US 8', 'US 9', 'US 10', 'US 11'],
+//   );
+// }
+
+String _resolveVariantId(
+    sf.Product product, {
+      required String selectedColor,
+      required String selectedSize,
+    }) {
+  final variants = product.productVariants ?? const [];
+  if (variants.isEmpty) throw Exception('Product has no variants.');
+
+  // Best-effort match: variant.selectedOptions contains names/values
+  for (final v in variants) {
+    try {
+      final d = v as dynamic;
+      final opts = d.selectedOptions as List?;
+      if (opts == null) continue;
+
+      bool matchesColor = true;
+      bool matchesSize = true;
+
+      for (final o in opts) {
+        final name = (o.name ?? '').toString().toLowerCase();
+        final value = (o.value ?? '').toString();
+
+        if (name.contains('color') || name.contains('colour')) {
+          matchesColor = (value == selectedColor);
+        }
+        if (name.contains('size')) {
+          matchesSize = (value == selectedSize);
+        }
+      }
+
+      if (matchesColor && matchesSize) {
+        return v.id.toString();
+      }
+    } catch (_) {}
+  }
+
+  // Fallback: first variant
+  return variants.first.id.toString();
+}
+

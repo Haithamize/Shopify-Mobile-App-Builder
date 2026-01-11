@@ -42,9 +42,9 @@ hydration_verification.txt
 .skeleton_backup/
 
 # Merchant vaults (if you don't want to commit merchant-specific configs)
-merchant_vault/*/
-!merchant_vault/skeleton/ # Keep skeleton config
-!merchant_vault/README.md
+#merchant_vault/*/
+#!merchant_vault/skeleton/ # Keep skeleton config
+#!merchant_vault/README.md
 
 # Temporary files from hydration
 assets/icon_temp.png

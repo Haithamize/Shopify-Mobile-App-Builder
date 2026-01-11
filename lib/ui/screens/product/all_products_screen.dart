@@ -6,10 +6,11 @@ import 'package:shopify_flutter/shopify_flutter.dart' as sf;
 import '../../../core/config/deeplink/merchant_context_service.dart';
 import '../../../core/config/merchant_config.dart';
 import '../../../core/di/injection_container.dart';
-import '../../../features/catalogue/bloc/products_bloc.dart';
-import '../../../features/catalogue/bloc/products_event.dart';
-import '../../../features/catalogue/bloc/products_state.dart';
+import '../../../features/catalogue/bloc/product/products_bloc.dart';
+import '../../../features/catalogue/bloc/product/products_event.dart';
+import '../../../features/catalogue/bloc/product/products_state.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../utility/utility.dart';
 import '../../layout/responsive.dart';
 
 
@@ -52,8 +53,15 @@ class _AllProductsScreenState extends State<AllProductsScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Deep link support via query params:
-    // /products?filter=sale&sort=price_asc
+    // ✅ Ensure products load at least once
+    final bloc = context.read<ProductsBloc>();
+    if (bloc.state is ProductsInitial) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        bloc.add(const LoadProducts(limit: 30));
+      });
+    }
+
+    // (keep your deep-link query parsing code below unchanged)
     final uri = GoRouterState.of(context).uri;
     if (_lastParsedUri == uri) return;
     _lastParsedUri = uri;
@@ -103,9 +111,13 @@ class _AllProductsScreenState extends State<AllProductsScreen>
           final rawProducts = _products(state);
 
 // If there's no real data yet, show fake products in UI (TEMP)
-          final List<_ProductVM> vms = rawProducts.isEmpty
-              ? _kFakeProducts
-              : rawProducts.map(_vmFromShopify).toList(growable: false);
+//           final List<_ProductVM> vms = rawProducts.isEmpty
+//               ? _kFakeProducts
+//               : rawProducts.map(_vmFromShopify).toList(growable: false);
+
+          // ✅ Real data only
+          final List<_ProductVM> vms =
+          rawProducts.map(_vmFromShopify).toList(growable: false);
 
 // Apply local filter/sort to what we have
           final visible = _applyFilterAndSort(vms, _filter, _sort);
@@ -296,7 +308,10 @@ class _AllProductsScreenState extends State<AllProductsScreen>
                           onQuickAdd: () {
                             // future
                           },
-                          onTap: () => context.go('/product/${p.id}'),
+                          onTap: () => context.push(
+                            '/product/${Uri.encodeComponent(p.id)}',
+                            extra: rawProducts.firstWhere((x) => x.id.toString() == p.id),
+                          ),
                         );
                       },
                       childCount: visible.length,
@@ -450,66 +465,96 @@ class _AllProductsScreenState extends State<AllProductsScreen>
 // ============================================================================
 
 _ProductVM _vmFromShopify(sf.Product p) {
-  // ShopifyFlutter Product structure can differ depending on version.
-  // We keep this defensive to avoid crashes.
-  final title = (p.title ?? '').toString();
+  final title = (p.title ?? '').toString().trim();
+  final safeTitle = title.isEmpty ? 'Untitled' : title;
 
-  // Price:
-  // Many Shopify models have variants with prices; we choose the first.
+  // --- Price (defensive) ---
   double price = 0;
   double? compareAt;
 
   try {
-    final variants = p.productVariants;
-    if (variants != null && variants.isNotEmpty) {
+    final variants = (p.productVariants ?? const []);
+    if (variants.isNotEmpty) {
       final v0 = variants.first;
 
-      // price is often a String, sometimes already num.
-      final rawPrice = v0.price;
-      price = double.tryParse(rawPrice.toString()) ?? 0;
+      price = moneyToDouble(v0.price);
 
-      final rawCompare = v0.compareAtPrice;
-      final parsedCompare = double.tryParse(rawCompare.toString());
-      if (parsedCompare != null && parsedCompare > price) {
-        compareAt = parsedCompare;
-      }
+      final c = _toDoubleSafeNullable(v0.compareAtPrice);
+      if (c != null && c > price) compareAt = c;
     }
   } catch (_) {
-    // ignore and keep defaults
+    // keep defaults
   }
 
-  // Image:
-  // We keep it simple: use placeholder asset until you wire NetworkImage caching.
-  // If you have a stable placeholder in assets, use it.
-  final imageProvider = const AssetImage('assets/demo/product_sneakers.jpg');
-
-  // "New" heuristic: if product createdAt is recent; if not available just false.
+  // --- CreatedAt (defensive) ---
+  DateTime createdAt = DateTime(1970, 1, 1);
   bool isNew = false;
-  DateTime createdAt = DateTime(2025, 1, 1);
 
   try {
-    // Some versions have createdAt as String.
-    final rawCreated = p.createdAt;
-    if (rawCreated != null) {
-      createdAt = DateTime.tryParse(rawCreated.toString()) ?? createdAt;
+    final raw = (p.createdAt)?.toString();
+    final parsed = raw == null ? null : DateTime.tryParse(raw);
+    if (parsed != null) {
+      createdAt = parsed;
       isNew = DateTime.now().difference(createdAt).inDays <= 14;
     }
   } catch (_) {}
 
-  // Badge:
-  final badgeText = (compareAt != null) ? 'SALE' : (isNew ? 'NEW' : '');
+  // --- Image (defensive across plugin versions) ---
+  final imageUrl = _tryGetFirstImageUrl(p);
+  final ImageProvider imageProvider = (imageUrl != null && imageUrl.isNotEmpty)
+      ? NetworkImage(imageUrl)
+      : const AssetImage('assets/demo/product_sneakers.jpg');
+
+  final badgeText =
+  (compareAt != null) ? 'SALE' : (isNew ? 'NEW' : '');
 
   return _ProductVM(
+    raw: p,
     id: p.id.toString(),
-    title: title.isEmpty ? 'Untitled' : title,
+    title: safeTitle,
     price: price,
     compareAt: compareAt,
     isNew: isNew,
-    popularityScore: 0, // Shopify doesn't provide directly; keep 0
+    popularityScore: 0,
     image: imageProvider,
-    badgeText: badgeText.isEmpty ? ' ' : badgeText,
+    badgeText: badgeText,
     createdAt: createdAt,
   );
+}
+
+double _toDoubleSafe(dynamic v) {
+  final s = v?.toString().trim() ?? '';
+  return double.tryParse(s) ?? 0;
+}
+
+double? _toDoubleSafeNullable(dynamic v) {
+  final s = v?.toString().trim();
+  if (s == null || s.isEmpty) return null;
+  return double.tryParse(s);
+}
+
+/// Tries to read product image URL across shopify_flutter model variations.
+String? _tryGetFirstImageUrl(sf.Product p) {
+  try {
+    final d = p as dynamic;
+
+    // common: product.images -> list
+    final images = d.images;
+    if (images != null && images.isNotEmpty) {
+      final img0 = images.first;
+      final url = img0.originalSrc ?? img0.src ?? img0.url;
+      return url?.toString();
+    }
+
+    // sometimes: product.image -> single
+    final img = d.image;
+    if (img != null) {
+      final url = img.originalSrc ?? img.src ?? img.url;
+      return url?.toString();
+    }
+  } catch (_) {}
+
+  return null;
 }
 
 // ============================================================================
@@ -740,10 +785,12 @@ class _ProductTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     final hasSale = product.compareAt != null && product.compareAt! > product.price;
-    final badgeText = product.badgeText;
-    final badgeColor = badgeText == 'NEW'
-        ? const Color(0xFF4AAE9B)
-        : const Color(0xFFD1493F);
+    final badgeText = product.badgeText.trim();
+    final Color badgeColor = switch (badgeText) {
+      'NEW'  => const Color(0xFF4AAE9B),
+      'SALE' => const Color(0xFFD1493F),
+      _      => Colors.transparent, // won't be used because we won't render badge
+    };
 
     return InkWell(
       onTap: onTap,
@@ -757,36 +804,46 @@ class _ProductTile extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image(image: product.image, fit: BoxFit.cover, filterQuality: FilterQuality.medium),
-
-                  PositionedDirectional(
-                    start: r.s3,
-                    top: r.s3,
-                    child: _Badge(
-                      text: badgeText,
-                      color: badgeColor,
+                  Image(
+                    image: product.image,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.medium,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/demo/product_sneakers.jpg',
+                      fit: BoxFit.cover,
                     ),
                   ),
 
-                  if (enableWishlist)
+                  if (badgeText.trim().isNotEmpty)
                     PositionedDirectional(
-                      end: r.s3,
+                      start: r.s3,
                       top: r.s3,
-                      child: _CircleIconButton(
-                        icon: isWishlisted ? Icons.favorite : Icons.favorite_border,
-                        onTap: onToggleWishlist!,
+                      child: _Badge(
+                        text: badgeText,
+                        color: badgeColor,
                       ),
                     ),
 
-                  PositionedDirectional(
-                    start: r.s3,
-                    end: r.s3,
-                    bottom: r.s3,
-                    child: _QuickAddButton(
-                      label: l10n.productsQuickAdd,
-                      onTap: onQuickAdd,
+                  if (enableWishlist)
+                    if (badgeText.trim().isNotEmpty)
+                      PositionedDirectional(
+                        start: r.s3,
+                        top: r.s3,
+                        child: _Badge(
+                          text: badgeText,
+                          color: badgeColor,
+                        ),
+                      ),
+
+                  if (badgeText.trim().isNotEmpty)
+                    PositionedDirectional(
+                      start: r.s3,
+                      top: r.s3,
+                      child: _Badge(
+                        text: badgeText,
+                        color: badgeColor,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -979,6 +1036,7 @@ class _SheetOption extends StatelessWidget {
 
 class _ProductVM {
   const _ProductVM({
+    required this.raw,
     required this.id,
     required this.title,
     required this.price,
@@ -990,6 +1048,7 @@ class _ProductVM {
     required this.createdAt,
   });
 
+  final sf.Product raw;
   final String id;
   final String title;
   final double price;
@@ -1006,95 +1065,95 @@ class _ProductVM {
 // ---------------------------------------------------------------------------
 
 
-final List<_ProductVM> _kFakeProducts = <_ProductVM>[
-  _ProductVM(
-    id: 'demo_1',
-    title: 'Classic White Sneakers',
-    price: 129.00,
-    compareAt: 159.00,
-    isNew: true,
-    popularityScore: 85,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'SALE',
-    createdAt: DateTime(2025, 12, 10),
-  ),
-  _ProductVM(
-    id: 'demo_2',
-    title: 'Leather Tote Bag',
-    price: 245.00,
-    compareAt: null,
-    isNew: true,
-    popularityScore: 72,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'NEW',
-    createdAt: DateTime(2025, 12, 20),
-  ),
-  _ProductVM(
-    id: 'demo_3',
-    title: 'Luxury Watch',
-    price: 399.00,
-    compareAt: 479.00,
-    isNew: false,
-    popularityScore: 90,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'SALE',
-    createdAt: DateTime(2025, 11, 18),
-  ),
-  _ProductVM(
-    id: 'demo_4',
-    title: 'Silk Shirt',
-    price: 189.00,
-    compareAt: null,
-    isNew: true,
-    popularityScore: 60,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'NEW',
-    createdAt: DateTime(2025, 12, 24),
-  ),
-  _ProductVM(
-    id: 'demo_4',
-    title: 'Silk Shirt',
-    price: 189.00,
-    compareAt: null,
-    isNew: true,
-    popularityScore: 60,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'NEW',
-    createdAt: DateTime(2025, 12, 24),
-  ),
-  _ProductVM(
-    id: 'demo_4',
-    title: 'Silk Shirt',
-    price: 189.00,
-    compareAt: null,
-    isNew: true,
-    popularityScore: 60,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'NEW',
-    createdAt: DateTime(2025, 12, 24),
-  ),
-  _ProductVM(
-    id: 'demo_4',
-    title: 'Silk Shirt',
-    price: 189.00,
-    compareAt: null,
-    isNew: true,
-    popularityScore: 60,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'NEW',
-    createdAt: DateTime(2025, 12, 24),
-  ),
-  _ProductVM(
-    id: 'demo_4',
-    title: 'Silk Shirt',
-    price: 189.00,
-    compareAt: null,
-    isNew: true,
-    popularityScore: 60,
-    image: const AssetImage('assets/demo/product_sneakers.jpg'),
-    badgeText: 'NEW',
-    createdAt: DateTime(2025, 12, 24),
-  ),
-];
+// final List<_ProductVM> _kFakeProducts = <_ProductVM>[
+//   _ProductVM(
+//     id: 'demo_1',
+//     title: 'Classic White Sneakers',
+//     price: 129.00,
+//     compareAt: 159.00,
+//     isNew: true,
+//     popularityScore: 85,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'SALE',
+//     createdAt: DateTime(2025, 12, 10),
+//   ),
+//   _ProductVM(
+//     id: 'demo_2',
+//     title: 'Leather Tote Bag',
+//     price: 245.00,
+//     compareAt: null,
+//     isNew: true,
+//     popularityScore: 72,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'NEW',
+//     createdAt: DateTime(2025, 12, 20),
+//   ),
+//   _ProductVM(
+//     id: 'demo_3',
+//     title: 'Luxury Watch',
+//     price: 399.00,
+//     compareAt: 479.00,
+//     isNew: false,
+//     popularityScore: 90,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'SALE',
+//     createdAt: DateTime(2025, 11, 18),
+//   ),
+//   _ProductVM(
+//     id: 'demo_4',
+//     title: 'Silk Shirt',
+//     price: 189.00,
+//     compareAt: null,
+//     isNew: true,
+//     popularityScore: 60,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'NEW',
+//     createdAt: DateTime(2025, 12, 24),
+//   ),
+//   _ProductVM(
+//     id: 'demo_4',
+//     title: 'Silk Shirt',
+//     price: 189.00,
+//     compareAt: null,
+//     isNew: true,
+//     popularityScore: 60,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'NEW',
+//     createdAt: DateTime(2025, 12, 24),
+//   ),
+//   _ProductVM(
+//     id: 'demo_4',
+//     title: 'Silk Shirt',
+//     price: 189.00,
+//     compareAt: null,
+//     isNew: true,
+//     popularityScore: 60,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'NEW',
+//     createdAt: DateTime(2025, 12, 24),
+//   ),
+//   _ProductVM(
+//     id: 'demo_4',
+//     title: 'Silk Shirt',
+//     price: 189.00,
+//     compareAt: null,
+//     isNew: true,
+//     popularityScore: 60,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'NEW',
+//     createdAt: DateTime(2025, 12, 24),
+//   ),
+//   _ProductVM(
+//     id: 'demo_4',
+//     title: 'Silk Shirt',
+//     price: 189.00,
+//     compareAt: null,
+//     isNew: true,
+//     popularityScore: 60,
+//     image: const AssetImage('assets/demo/product_sneakers.jpg'),
+//     badgeText: 'NEW',
+//     createdAt: DateTime(2025, 12, 24),
+//   ),
+// ];
 // final List<_ProductVM> _kFakeProducts = <_ProductVM>[];
 

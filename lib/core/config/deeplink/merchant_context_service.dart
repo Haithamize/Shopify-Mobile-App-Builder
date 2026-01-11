@@ -63,9 +63,12 @@ class MerchantContextService {
     _current = config;
 
     ShopifyConfig.setConfig(
-      storefrontAccessToken: config.storefrontToken,
-      storefrontApiVersion: '2024-07',
-      storeUrl: config.shopDomain,
+      // storefrontAccessToken: '3264de93052dc2fadcfea55cdeb9a5db',
+      // storefrontApiVersion: '2026-01',
+      // storeUrl: 'hamed-oco-development-store.myshopify.com',
+      storefrontAccessToken: 'd9139b64e0a5d26c7f178d59699d04e2',
+      storefrontApiVersion: '2026-01',
+      storeUrl: 'haitham-8952.myshopify.com',
       language: config.features.defaultLanguage,
     );
 

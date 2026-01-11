@@ -171,9 +171,9 @@ if [ ! -f "$STABLE_MAIN_PATH" ]; then
   cat > "$STABLE_MAIN_PATH" << EOF
 package $STABLE_MAIN_PACKAGE
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity : FlutterFragmentActivity()
 EOF
   echo "   ✅ Created stable MainActivity."
 else
@@ -184,10 +184,10 @@ else
   fi
 
   # Ensure FlutterActivity import exists
-  if ! grep -q "^import io\.flutter\.embedding\.android\.FlutterActivity" "$STABLE_MAIN_PATH"; then
-    echo "   ⚠️ MainActivity missing FlutterActivity import. Adding it."
+  if ! grep -q "^import io\.flutter\.embedding\.android\.FlutterFragmentActivity" "$STABLE_MAIN_PATH"; then
+    echo "   ⚠️ MainActivity missing FlutterFragmentActivity import. Adding it."
     # Insert import after package line
-    awk 'NR==1{print $0 "\n\nimport io.flutter.embedding.android.FlutterActivity"; next}1' "$STABLE_MAIN_PATH" > "$STABLE_MAIN_PATH.tmp" && mv "$STABLE_MAIN_PATH.tmp" "$STABLE_MAIN_PATH"
+    awk 'NR==1{print $0 "\n\nimport io.flutter.embedding.android.FlutterFragmentActivity"; next}1' "$STABLE_MAIN_PATH" > "$STABLE_MAIN_PATH.tmp" && mv "$STABLE_MAIN_PATH.tmp" "$STABLE_MAIN_PATH"
   fi
 
   echo "   ✅ Stable MainActivity exists."
